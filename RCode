@@ -1,0 +1,49 @@
+# Project Name
+
+Risk quantification in R.
+
+## Status
+
+This project is actively being developed and is in the production stage.
+
+## Tags/Topics
+
+- Risk management
+- Data Analysis
+- R
+
+## Getting Started
+
+Provide instructions on how to get started with your project. Include any prerequisites and installation steps.
+
+## Documentation
+
+Link to your project's documentation. If you have a wiki, consider linking to it here.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+
+
+Simulations <- 10000   # Number of scenarios to simulate
+Events <- 4            # Number of expected annual events to materialize (Poisson distribution)
+Loss <- 100            # Expected average financial loss per event (Lognormal distribution)
+Mean <- .2             # Standard deviation of the losses in R
+
+# Simulate Poisson-distributed random variables (number of events)
+Prob <- rpois(Simulations, Events)
+
+# Simulate Lognormal-distributed random variables (financial loss per event)
+Impact <- rlnorm(Simulations, log(Loss), Mean)
+
+# Calculate the total loss for each scenario
+x <- Prob * Impact
+
+# Display a summary of the simulated data
+summary(x)
+
+# Create a histogram of the simulated losses
+hist(x)
+
+# Calculate the 75th percentile of the simulated losses
+quantile(x, c(0.75))
