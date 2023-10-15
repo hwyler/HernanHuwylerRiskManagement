@@ -29,7 +29,7 @@ summary(x)
 hist(x)
 
 # Calculate the given percentile of the simulated losses
-quantile(x, c(reserve))
+quantile(x, c(Reserve))
 
 # Graph a Loss Exceedance Curve
 number_sequence = seq(0.1,1,0.01)
