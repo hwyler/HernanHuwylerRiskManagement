@@ -9,9 +9,9 @@
 # Data input
 Simulations <- 10000   # Number of scenarios to simulate
 Events <- 4            # Number of expected annual events to materialize (Poisson distribution)
-Loss <- 100            # Expected average financial loss per event (Lognormal distribution)
+Loss <- 20000          # Expected average financial loss per event (Lognormal distribution)
 Mean <- .2             # Standard deviation of the losses in R
-Reserve <- .75         # This percentile is a measure of the risk exposure, indicating the level of loss that would be lower in a specific proportion of the simulated scenarios
+Reserve <- .8          # This percentile is a measure of the risk exposure, indicating the level of loss that would be lower in a specific proportion of the simulated scenarios
 
 # Simulate Poisson-distributed random variables (number of events)
 Prob <- rpois(Simulations, Events)
