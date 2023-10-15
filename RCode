@@ -11,6 +11,7 @@ Simulations <- 10000   # Number of scenarios to simulate
 Events <- 4            # Number of expected annual events to materialize (Poisson distribution)
 Loss <- 100            # Expected average financial loss per event (Lognormal distribution)
 Mean <- .2             # Standard deviation of the losses in R
+Reserve <- .75         # This percentile is a measure of the risk exposure, indicating level of loss that would be lower in a specific proportion of the simulated scenarios
 
 # Simulate Poisson-distributed random variables (number of events)
 Prob <- rpois(Simulations, Events)
@@ -27,5 +28,12 @@ summary(x)
 # Create a histogram of the simulated losses
 hist(x)
 
-# Calculate the 75th percentile of the simulated losses
-quantile(x, c(0.75))
+# Calculate the given percentile of the simulated losses
+quantile(x, c(reserve))
+
+# Graph a Loss Exceedance Curve
+number_sequence = seq(0.1,1,0.01)
+y <- c()
+for (i in number_sequence) {
+y <- c(y,quantile (x, c(i))) }
+plot(number_sequence,y)
