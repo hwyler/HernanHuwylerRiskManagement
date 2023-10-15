@@ -37,3 +37,6 @@ y <- c()
 for (i in number_sequence) {
 y <- c(y,quantile (x, c(i))) }
 plot(number_sequence,y)
+
+# Graph a the Annual Loss Expectancy
+boxplot(x)
