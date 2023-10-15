@@ -4,7 +4,7 @@
 
 # Tags/Topics - Risk management - Data Analysis - R
 
-# License This project is open source.
+# License This project is open source, originally provided by Prof. Hernan Huwyler, MBA CPA.
 
 # Data input
 Simulations <- 10000   # Number of scenarios to simulate
