@@ -1,3 +1,12 @@
+# Project Risk quantification in R. A repository for simulating and analyzing risk scenarios in Python.
+
+# Status This project is actively being developed and is in the production  stage.
+
+# Tags/Topics - Risk management - Data Analysis - Python
+
+# License This project is open source, originally provided by Prof. Hernan Huwyler, MBA CPA.
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -20,16 +29,16 @@ x = Prob * Impact
 # Display a summary of the simulated data
 print(np.percentile(x, Reserve * 100))
 
+# Calculate the given percentile of the simulated losses
+loss_at_reserve = np.percentile(x, Reserve * 100)
+print(f'{Reserve * 100}th Percentile Loss: {loss_at_reserve}')
+
 # Create a histogram of the simulated losses
 plt.hist(x, bins=20, density=True, alpha=0.6, color='b', edgecolor='black')
 plt.xlabel('Loss')
 plt.ylabel('Probability Density')
 plt.title('Simulated Losses Histogram')
 plt.show()
-
-# Calculate the given percentile of the simulated losses
-loss_at_reserve = np.percentile(x, Reserve * 100)
-print(f'{Reserve * 100}th Percentile Loss: {loss_at_reserve}')
 
 # Graph a Loss Exceedance Curve
 number_sequence = np.arange(0.1, 1.01, 0.01)
