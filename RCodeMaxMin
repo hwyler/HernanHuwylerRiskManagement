@@ -35,7 +35,7 @@ y <- rbinom(n, events, chances)
 # Create a histogram for the simulated number of incidents
 hist(y, main="Distribution of Simulated Incidents", xlab="Number of Incidents", ylab="Frequency")
 
-# Calculate and display the exposure by multiplying impacts and incidents
+# Calculate and display the exposure by multiplying impacts and estimated probabilities of incidents
 exposure <- x * y
 
 # Create a histogram for the calculated exposure
