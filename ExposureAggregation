@@ -1,0 +1,33 @@
+# Define the probability of a data breach
+P_B <- 0.05  # 5% probability of a security incident for the IA model causing a data breach
+
+# Define parameters for the lognormal distribution
+mean_compensation <- 50000  # Mean compensation costs (customer compensations, legal and notification costs)
+sd_compensation <- 2        # Standard deviation of compensation cost
+mean_regeneration <- 20000   # Mean data regeneration costs (model rebuilding and data regeneration costs)
+sd_regeneration <- 2         # Standard deviation of data regeneration cost
+
+# Generate random samples from lognormal distributions for compensation and regeneration costs
+compensation_samples <- rlnorm(1000, log(mean_compensation), log(sd_compensation))
+regeneration_samples <- rlnorm(1000, log(mean_regeneration), log(sd_regeneration))
+
+# Combine compensation and regeneration cost samples to calculate total losses
+total_loss <- compensation_samples + regeneration_samples
+
+# Create a histogram to visualize the distribution of total losses
+hist(total_loss, breaks = 100, main = "Distribution of Total Losses",
+     xlab = "Total Loss", ylab = "Frequency", col = "lightblue")
+
+# Calculate the expected compensation cost using the Law of Total Expectation
+Expected_Cost_Compensation <- P_B * mean(compensation_samples)
+
+# Calculate the expected data regeneration cost using the Law of Total Expectation
+Expected_Cost_Regeneration <- P_B * mean(regeneration_samples)
+
+# Calculate the total expected loss of a data breach
+Expected_Loss <- Expected_Cost_Compensation + Expected_Cost_Regeneration
+
+# Print the results
+cat("The expected compensation cost of a data breach is $", Expected_Cost_Compensation, "\n")
+cat("The expected data regeneration cost of a data breach is $", Expected_Cost_Regeneration, "\n")
+cat("The total expected loss of a data breach is $", Expected_Loss, "\n")
