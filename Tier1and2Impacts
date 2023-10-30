@@ -1,0 +1,42 @@
+# Risk Impact Aggregation
+
+This repository contains a simple R script for calculating the aggregation of risk impacts, taking into account both primary (tier 1) and secondary (tier 2) impacts. It uses a Monte Carlo simulation approach to estimate the combined impact of these risks.
+
+## Parameters
+
+The following parameters are set for the risk assessment:
+- `Simulations`: Number of random simulations to run for estimation.
+- `Loss1`: Estimated loss of the tier 1 impact (data regeneration costs).
+- `StDev1`: Estimated standard deviation of the tier 1 impact.
+- `Prob1`: Probability of occurrence of the tier 1 impact.
+- `Loss2`: Estimated loss of the tier 2 impact (compensation costs).
+- `StDev2`: Estimated standard deviation of the tier 2 impact.
+- `Prob2`: Probability of occurrence of the tier 2 impact.
+
+## Usage
+
+The script uses the parameters to perform Monte Carlo simulations to estimate the combined impact of tier 1 and tier 2 risks. It generates random samples for both impacts and aggregates them. The results are visualized in a histogram to provide insights into the potential risk exposure.
+
+Feel free to customize the parameters and use this script as a tool for risk assessment in your projects.
+
+## How to Run
+
+1. Clone or download this repository.
+2. Open the R script in your preferred R environment.
+3. Adjust the parameters as needed.
+4. Run the script to perform the risk impact aggregation and visualize the results.
+
+
+# Set the parameters for risk assessment
+Simulations <- 10000    # Number of random simulations
+Loss1 <- 20000          # Estimated loss of the tier 1 impact (data regeneration costs)
+StDev1 <- 0.2           # Estimated standard deviation of the tier 1 impact
+Prob1 <- 0.2            # Probability of occurrence of the tier 1 impact
+Loss2 <- 50000          # Estimated loss of the tier 2 impact (compensation costs)
+StDev2 <- 0.2           # Estimated standard deviation of the tier 2 impact
+Prob2 <- 0.5            # Probability of occurrence of the tier 2 impact
+
+# Calculate impacts
+x1 <- rlnorm(Simulations, log(Loss1), StDev1) * rbinom(Simulations, 1, Prob1)
+x2 <- rlnorm(Simulations, log(Loss2), StDev2) * rbinom(Simulations, 1, Prob2)
+hist(x1 + x2, main="Risk Impact Aggregation", xlab="Combined Impact")
