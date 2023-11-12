@@ -1,15 +1,15 @@
-# Set the parameters for assessment of two independent risks to produce a tornado chart
+# Set the parameters for the assessment of two independent risk factors to produce a tornado chart
 n <- 10000                  # Number of random simulations
-confidence_level1 <- 0.95    # Confidence level for the risk 1
-lower1 <- 2000               # Lower value of the risk 1 
-upper1 <- 3000               # Upper value of the risk 1
-events1 <- 5                 # Expected number of trials in the time horizon for risk 1
-chances1 <- 0.5              # Probability of each trial resulting in an incident for risk 1
-confidence_level2 <- 0.7    # Confidence level for the risk 2
-lower2 <- 1000               # Lower value of the risk 2 
-upper2 <- 2000               # Upper value of the risk 2
-events2 <- 10                 # Expected number of trials in the time horizon for risk 2
-chances2 <- 0.25              # Probability of each trial resulting in an incident for risk 2
+confidence_level1 <- 0.95    # Confidence level for the risk factor 1
+lower1 <- 2000               # Lower value of the risk factor 1 
+upper1 <- 3000               # Upper value of the risk factor 1
+events1 <- 5                 # Expected number of trials in the time horizon for risk factor 1
+chances1 <- 0.5              # Probability of each trial resulting in an incident for risk factor 1
+confidence_level2 <- 0.7    # Confidence level for the risk factor 2
+lower2 <- 1000               # Lower value of the risk factor 2 
+upper2 <- 2000               # Upper value of the risk factor 2
+events2 <- 10                 # Expected number of trials in the time horizon for risk factor 2
+chances2 <- 0.25              # Probability of each trial resulting in an incident for risk factor 2
 
 # Calculate the error margin and the lower and upper quantiles for the specified confidence level
 error1 <- (1 - confidence_level1) / 2
@@ -44,10 +44,10 @@ min2 <- quantile(exposure2, c(.2))
 max2 <- quantile(exposure2, c(.8))
 
 # Print min1, max1, min2, max2
-print("Risk 1:")
+print("Risk factor 1:")
 print(paste("Min:", min1))
 print(paste("Max:", max1))
-print("Risk 2:")
+print("Risk factor 2:")
 print(paste("Min:", min2))
 print(paste("Max:", max2))
 
@@ -81,7 +81,7 @@ barplot(
   main = "Horizontal Tornado Chart",
   xlab = "Values",
   ylab = "Variables",
-  legend.text = c("Risk 2", "Risk 1"),
+  legend.text = c("Risk factor 2", "Risk factor 1"),
   args.legend = list(x = "topright")
 )
 
@@ -92,7 +92,7 @@ diff_risk2 <- max2 - min2
 
 # Create a data frame for the differences
 diff_data <- data.frame(
-  Variables = c("Risk 2", "Risk 1"),
+  Variables = c("Risk factor 2", "Risk factor 1"),
   Differences = c(diff_risk2, diff_risk1)
 )
 
@@ -105,6 +105,6 @@ barplot(
   xlab = "Differences",
   ylab = "Variables",
   names.arg = diff_data$Variables,
-  legend.text = c("Risk 2", "Risk 1"),
+  legend.text = c("Risk factor 2", "Risk factor 1"),
   args.legend = list(x = "topright")
 )
