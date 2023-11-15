@@ -1,0 +1,98 @@
+Risk Incident Distribution Analyzer
+
+This Python script allows you to assess the distribution of past risk incidents by asking for their dates and values. It helps you understand the frequency and impact of these incidents, providing insights into the risk landscape.
+
+Features:
+- User-friendly interface for entering past risk incident details
+- Calculates and displays the frequency distribution of incidents
+- Determines the frequency type (Poisson, Binomial, or Unknown)
+- Calculates and displays the impact distribution of incidents
+- Determines the impact distribution type (Lognormal, Weibull, Pareto, Binomial, or Unknown)
+
+Usage:
+1. Run the script and follow the prompts to enter past risk incident dates and values.
+2. The script will calculate the frequency distribution and display it.
+3. It will also determine the frequency type based on the distribution.
+4. Next, the script will calculate the impact distribution and display it.
+5. It will determine the impact distribution type based on the values.
+6. Finally, it will provide you with the impact distribution type for further analysis.
+
+Note: Make sure to have Python installed on your system to run this script.
+
+Contributing:
+Contributions are welcome! If you have any suggestions or improvements, feel free to fork the repository and submit a pull request.
+
+License:
+This project is licensed under the MIT License.
+
+import datetime
+import math
+loss_table = []
+def enter_date():
+while True:
+try:
+date_str = input("Enter a past loss date as YY/MM/DD: ")
+date = datetime.datetime.strptime(date_str, "%y/%m/%d").date()
+return date
+except ValueError:
+print("Invalid date format. Please try again.")
+def enter_value():
+while True:
+try:
+value = float(input("Enter a past loss value: "))
+return value
+except ValueError:
+print("Invalid value format. Please try again.")
+def calculate_frequency_distribution():
+frequencies = {}
+for date, value in loss_table:
+if date in frequencies:
+frequencies[date] += 1
+else:
+frequencies[date] = 1
+print("Frequency distribution:")
+for date, frequency in frequencies.items():
+print(f"Date: {date}, Frequency: {frequency}")
+frequency_type = determine_frequency_type(frequencies)
+print(f"Frequency Type: {frequency_type}")
+def determine_frequency_type(frequencies):
+num_dates = len(frequencies)
+total_frequency = sum(frequencies.values())
+is_poisson = all(frequency == 1 for frequency in frequencies.values())
+is_binomial = num_dates == total_frequency
+if is_poisson:
+return "Poisson"
+elif is_binomial:
+return "Binomial"
+else:
+return "Unknown"
+def calculate_impact_distribution():
+values = [value for _, value in loss_table]
+is_lognormal = all(value > 0 for value in values)
+is_weibull = all(value >= 0 for value in values)
+is_pareto = any(value > 0 for value in values)
+is_binomial = all(value == 0 or value == 1 for value in values)
+if is_lognormal:
+return "Lognormal"
+elif is_weibull:
+return "Weibull"
+elif is_pareto:
+return "Pareto"
+elif is_binomial:
+return "Binomial"
+else:
+return "Unknown"
+def main():
+while True:
+date = enter_date()
+value = enter_value()
+loss_table.append((date, value))
+choice = input("Enter another one? (Y/N): ")
+if choice.lower() != "y":
+break
+calculate_frequency_distribution()
+calculate_impact_distribution()
+impact_type = calculate_impact_distribution()
+print(f"Impact distribution type: {impact_type}")
+if name == "main":
+main()
