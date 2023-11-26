@@ -1,0 +1,5 @@
+# Install and load the 'cluster' package if it's not already installed
+if (!requireNamespace("cluster", quietly = TRUE)) {
+  install.packages("cluster")
+}
+library(cluster)
