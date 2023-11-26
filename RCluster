@@ -1,5 +1,32 @@
-# Install and load the 'cluster' package if it's not already installed
-if (!requireNamespace("cluster", quietly = TRUE)) {
-  install.packages("cluster")
-}
+if (!requireNamespace("cluster", quietly = TRUE)) install.packages("cluster")
 library(cluster)
+
+# Sample data
+transactions <- data.frame(
+  user = c("A", "A", "B", "B", "C", "C", "A", NA),
+  geography = c("ROS", "ROS", "ROS", "BAI", "BAI", "BAI", "COR", NA),
+  amount = c(100, 200, 300, 400, 200, 400, 300, NA)
+)
+
+# Remove rows with missing values
+complete_transactions <- na.omit(transactions)
+
+# Convert categorical variables to factors
+complete_transactions$user <- as.factor(complete_transactions$user)
+complete_transactions$geography <- as.factor(complete_transactions$geography)
+
+# Calculate dissimilarity matrix
+diss_matrix <- daisy(complete_transactions, metric = "gower")
+
+# Check if the dissimilarity matrix can be computed
+if (inherits(diss_matrix, "dissimilarity")) {
+  # Perform hierarchical clustering
+  cluster_results <- hclust(as.dist(diss_matrix), method = "ward.D")
+  
+  # Assign clusters
+  complete_transactions$cluster <- cutree(cluster_results, k = 2)
+  
+  print(complete_transactions)
+} else {
+  warning("Dissimilarity matrix cannot be computed. Check for invalid data.")
+}
