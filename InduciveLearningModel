@@ -1,0 +1,40 @@
+# Import necessary libraries for inducive learning
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+
+# Input data representing historical due diligence and default events for 7 clients
+data = [
+    {"Client": "A", "Risk Factor 1": 470, "Risk Factor 2": 87, "Risk Factor 3": 1, "Incident": 0},
+    {"Client": "B", "Risk Factor 1": 450, "Risk Factor 2": 96, "Risk Factor 3": 1, "Incident": 0},
+    {"Client": "C", "Risk Factor 1": 430, "Risk Factor 2": 88, "Risk Factor 3": 1, "Incident": 0},
+    {"Client": "D", "Risk Factor 1": 270, "Risk Factor 2": 88, "Risk Factor 3": 0.5, "Incident": 1},
+    {"Client": "E", "Risk Factor 1": 470, "Risk Factor 2": 95, "Risk Factor 3": 1, "Incident": 0},
+    {"Client": "F", "Risk Factor 1": 300, "Risk Factor 2": 89, "Risk Factor 3": 0.5, "Incident": 1},
+    {"Client": "G", "Risk Factor 1": 320, "Risk Factor 2": 70, "Risk Factor 3": 0.5, "Incident": 1}
+]
+
+# Convert data to features and labels
+features = [[item["Risk Factor 1"]] for item in data]
+labels = [item["Incident"] for item in data]
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.2, random_state=42)
+
+# Train a logistic regression model
+model = LogisticRegression()
+model.fit(X_train, y_train)
+
+# Make predictions on the test set
+predictions = model.predict(X_test)
+
+# Assess the accuracy of the model
+accuracy = accuracy_score(y_test, predictions)
+
+# Validate the hypothesis: Predict defaults for clients with Risk Factor 1 < 300
+risk_threshold = 300
+predicted_default = model.predict([[risk_threshold]])
+
+# Output results
+print(f"Model Accuracy: {accuracy}")
+print(f"Predicted Default for Risk Factor 1 < {risk_threshold}: {predicted_default[0]}")
