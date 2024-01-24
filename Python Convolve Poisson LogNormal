@@ -1,0 +1,45 @@
+# Project Risk quantification in R. A repository for simulating and analyzing risk scenarios in Python.
+
+# Status This project is actively being developed and is in the production  stage.
+
+# Tags/Topics - Risk management - Data Analysis - Python - Convolve - Convolution 
+
+# License This project is open source, originally provided by Prof. Hernan Huwyler, MBA CPA.
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Data input
+Simulations = 1000000  # Number of scenarios to simulate
+Events = 4            # Number of expected annual events to materialize (Poisson distribution)
+Loss = 20000          # Expected average financial loss per event (Lognormal distribution)
+Mean = 0.2            # Standard deviation of the losses in R
+Reserve = 0.8         # This percentile is a measure of the risk exposure
+
+# Simulate Poisson-distributed random variables (number of events)
+Prob = np.random.poisson(Events, Simulations)
+
+# Simulate Lognormal-distributed random variables (financial loss per event)
+Impact = np.random.lognormal(mean=np.log(Loss), sigma=Mean, size=Simulations)
+
+# Combine distributions using convolution for each scenario separately
+combined_distribution = [np.convolve(Prob[i], Impact[i], mode='full') for i in range(Simulations)]
+
+# Calculate the total loss for each scenario
+x = np.array([np.sum(combined_distribution[i]) for i in range(Simulations)])
+
+# Display a summary of the simulated data
+print(np.percentile(x, Reserve * 100))
+
+# Calculate the given percentile of the simulated losses
+loss_at_reserve = np.percentile(x, Reserve * 100)
+print(f'{Reserve * 100}th Percentile Loss: {loss_at_reserve}')
+
+# Graph a Loss Exceedance Curve
+number_sequence = np.arange(0.1, 1.01, 0.01)
+y = [np.percentile(x, i * 100) for i in number_sequence]
+plt.plot(number_sequence, y, marker='o')
+plt.xlabel('Percentile')
+plt.ylabel('Loss')
+plt.title('Loss Exceedance Curve')
+plt.show()
