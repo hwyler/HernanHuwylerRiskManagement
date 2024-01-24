@@ -36,7 +36,7 @@ loss_at_reserve = np.percentile(x, Reserve * 100)
 print(f'{Reserve * 100}th Percentile Loss: {loss_at_reserve}')
 
 # Graph a Loss Exceedance Curve
-number_sequence = np.arange(0.1, 1.01, 0.01)
+number_sequence = np.arange(0.01, 1.001, 0.001)
 y = [np.percentile(x, i * 100) for i in number_sequence]
 plt.plot(number_sequence, y, marker='o')
 plt.xlabel('Percentile')
