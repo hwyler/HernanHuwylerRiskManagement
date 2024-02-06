@@ -1,3 +1,11 @@
+# Project Risk quantification in R. A repository for simulating and analyzing risk losses in cyber and compliance.
+
+# Status This project is actively being developed and is in the production  stage.
+
+# Tags/Topics - Risk management - Data Analysis - R - Convolve - Convolution - Monte Carlo Simulation - IT Risks - AI Risks - Cyber Risks
+
+# License This project is open source, originally provided by Prof. Hernan Huwyler, MBA CPA.
+
 # Data input
 Simulations <- 100000     # Number of scenarios to simulate
 Events <- 4                # Number of expected annual events to materialize (Poisson distribution)
