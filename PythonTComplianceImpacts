@@ -1,0 +1,90 @@
+# Project Risk quantification in Python. A repository for simulating and analyzing risk losses in cyber and compliance.
+
+# Status This project is actively being developed and is in the production  stage.
+
+# Tags/Topics - Risk management - Data Analysis - Python - Convolve - Convolution - Monte Carlo Simulation - IT Risks - AI Risks - Cyber Risks
+
+# License This project is open source, originally provided by Prof. Hernan Huwyler, MBA CPA.
+
+import numpy as np
+import scipy.stats as stats
+import matplotlib.pyplot as plt
+
+# Parameters
+Simulations = 100000   # Number of scenarios to simulate
+Events = 4             # Number of expected annual events to materialize (Poisson distribution)
+it_lower = 10000       # Lower value of the IT losses
+it_upper = 20000       # Upper value of the IT losses
+compliance_lower = 25000   # Lower value of the compliance losses
+compliance_upper = 75000   # Upper value of the compliance losses
+confidence_level = 0.8     # Confidence level that the IT losses will be in the lower and upper range
+Reserve = 0.8              # Percentile measure of risk exposure
+it_compliance_percentage = 0.2   # Percentage of IT scenarios also causing a compliance loss
+control_effectiveness = 0.5     # Control effectiveness, reduces the Poisson distribution by 50%
+
+np.random.seed(123)   # Set random seed for replicability
+
+# Simulate Poisson-distributed random variables (number of events)
+Prob = np.random.poisson(lam=Events * (1 - control_effectiveness), size=Simulations)
+
+# Calculate the error margin for the specified confidence level
+error = (1 - confidence_level) / 2
+
+# Calculate the lower and upper quantiles for the confidence level
+it_lowerq = stats.norm.ppf(error)         # Lower quantile for the confidence level
+it_upperq = stats.norm.ppf(1 - error)     # Upper quantile for the confidence level
+compliance_lowerq = stats.norm.ppf(error) # Lower quantile for the compliance losses
+compliance_upperq = stats.norm.ppf(1 - error) # Upper quantile for the compliance losses
+
+# Log-transform the lower and upper bounds for IT losses
+it_log_lower = np.log(it_lower)
+it_log_upper = np.log(it_upper)
+
+# Log-transform the lower and upper bounds for compliance losses
+compliance_log_lower = np.log(compliance_lower)
+compliance_log_upper = np.log(compliance_upper)
+
+# Calculate the true mean and standard deviation of the log-transformed values for IT losses
+it_true_mean_log = (it_log_lower + it_log_upper) / 2
+it_true_sd_log = (it_log_upper - it_log_lower) / (2 * stats.norm.ppf(1 - error))
+
+# Calculate the true mean and standard deviation of the log-transformed values for compliance losses
+compliance_true_mean_log = (compliance_log_lower + compliance_log_upper) / 2
+compliance_true_sd_log = (compliance_log_upper - compliance_log_lower) / (2 * stats.norm.ppf(1 - error))
+
+# Simulate Lognormal-distributed random variables for IT losses (financial loss per event)
+IT_Impact = np.random.lognormal(mean=it_true_mean_log, sigma=it_true_sd_log, size=Simulations)
+
+# Simulate Lognormal-distributed random variables for compliance losses (financial loss per event)
+Compliance_Impact = np.zeros(Simulations)
+compliance_occurrence = np.random.choice([0, 1], Simulations, p=[1 - it_compliance_percentage, it_compliance_percentage])
+for i in range(Simulations):
+    if compliance_occurrence[i] == 1:
+        Compliance_Impact[i] = np.random.lognormal(mean=compliance_true_mean_log, sigma=compliance_true_sd_log)
+
+# Combine distributions using convolution for each scenario separately for IT losses
+combined_distribution_IT = [np.convolve(prob, IT_Impact[i]) for i, prob in enumerate(Prob)]
+
+# Combine distributions using convolution for each scenario separately for compliance losses
+combined_distribution_Compliance = [np.convolve(prob, Compliance_Impact[i]) for i, prob in enumerate(Prob)]
+
+# Calculate the total loss for each scenario (IT losses)
+x_IT = [np.sum(combined) for combined in combined_distribution_IT]
+
+# Calculate the total loss for each scenario (compliance losses)
+x_Compliance = [np.sum(combined) for combined in combined_distribution_Compliance]
+
+# Total loss combining IT and compliance losses
+total_loss = np.array(x_IT) + np.array(x_Compliance)
+
+# Display a summary of the simulated data
+print(np.percentile(total_loss, Reserve * 100))
+
+# Graph a Loss Exceedance Curve
+number_sequence = np.arange(0.01, 1, 0.001)
+y = [np.percentile(total_loss, i * 100) for i in number_sequence]
+plt.plot(number_sequence, y)
+plt.xlabel("Percentile")
+plt.ylabel("Loss")
+plt.title("Loss Exceedance Curve")
+plt.show()
