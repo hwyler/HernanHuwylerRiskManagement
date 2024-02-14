@@ -1,0 +1,81 @@
+# Project Title: Vendor Default Risk Prediction Model
+
+# Description:
+# This repository contains a machine learning model developed to predict the default risks associated with vendors 
+# based on regression analysis of previous data. The model utilizes regression techniques to estimate the likelihood 
+# of vendors defaulting on their contracts. 
+
+# Keywords: Risks, third-party risk, artificial intelligence, predictions, regression modeling.
+
+# Developed by: Professor Hernan Hiuwyler, IE Law School Compliance Risks and Governance.
+
+# Overview:
+# The objective of this project is to develop a predictive model that can assess the default risks associated with vendors. 
+# By analyzing historical data on vendors' contract sizes, sectors, and countries, the model can provide insights into 
+# the probability of vendors defaulting on their obligations. 
+
+# Repository Contents:
+# - main.py: Python script containing the code for data preprocessing, model training, and prediction.
+# - data.csv: Sample dataset used for training and testing the model.
+# - README.md: Detailed documentation on the project, including instructions for usage and interpretation of results.
+
+# Usage:
+# To use the model, simply run the main.py script after ensuring that all necessary dependencies are installed. 
+# The script will preprocess the data, train the logistic regression model, and predict default probabilities for specific vendors.
+
+# Contributions:
+# Contributions to this project are welcome. Feel free to submit bug reports, feature requests, or pull requests 
+# to improve the functionality and accuracy of the model.
+
+# License:
+# This project is licensed under the MIT License. See the LICENSE file for more details.
+
+
+import pandas as pd
+
+# Create a list of data
+data = [
+    ["A", 20000, "Materials", "Germany", "No"],
+    ["B", 15000, "Engineering", "Switzerland", "No"],
+    ["C", 4000, "Materials", "Brazil", "No"],
+    ["D", 34000, "Engineering", "Italy", "No"],
+    ["E", 120, "Materials", "Turkey", "Yes"],
+    ["F", 28500, "Consultancy", "US", "No"],
+    ["G", 650, "Materials", "Morocco", "Yes"],
+    ["I", 3200, "Consultancy", "Mexico", "No"],
+]
+
+# Convert data to DataFrame
+df = pd.DataFrame(data, columns=["Vendor", "contract_size", "sector", "country", "Default"])
+
+# Define a function to encode categorical features
+def one_hot_encode(df):
+    encoded_df = pd.get_dummies(df, columns=["sector", "country"], drop_first=True)
+    return encoded_df
+
+# Encode categorical features
+encoded_df = one_hot_encode(df[['sector', 'country']])
+X = pd.concat([df[['contract_size']], encoded_df], axis=1)
+y = df['Default']
+
+# Train a Logistic Regression model
+from sklearn.linear_model import LogisticRegression
+model = LogisticRegression()
+model.fit(X, y)
+
+# Predict for specific vendors
+vendor_I_data = pd.DataFrame([[4000, "Materials", "Italy"]], columns=["contract_size", "sector", "country"])
+vendor_G_data = pd.DataFrame([[700, "Materials", "Morocco"]], columns=["contract_size", "sector", "country"])
+
+vendor_I_encoded = one_hot_encode(vendor_I_data[['sector', 'country']])
+vendor_G_encoded = one_hot_encode(vendor_G_data[['sector', 'country']])
+
+vendor_I_encoded = vendor_I_encoded.reindex(columns=encoded_df.columns, fill_value=0)
+vendor_G_encoded = vendor_G_encoded.reindex(columns=encoded_df.columns, fill_value=0)
+
+predicted_default_probability_I = model.predict_proba(pd.concat([vendor_I_data[['contract_size']], vendor_I_encoded], axis=1))[:, 1][0]
+predicted_default_probability_G = model.predict_proba(pd.concat([vendor_G_data[['contract_size']], vendor_G_encoded], axis=1))[:, 1][0]
+
+print(f"Predicted default probability for Vendor I: {predicted_default_probability_I}")
+print(f"Predicted default probability for Vendor G: {predicted_default_probability_G}")
+
