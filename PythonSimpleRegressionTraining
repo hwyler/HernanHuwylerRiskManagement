@@ -1,0 +1,74 @@
+"""
+Regression Model for Estimating Compensation Risks
+
+Objective:
+    Develop a simple linear regression model to estimate the risk of compensations due to insufficient training 
+    among contract managers. The model aims to provide insights into potential financial liabilities associated 
+    with inadequate training, assisting in risk assessment and decision-making.
+
+Libraries:
+    - matplotlib: For data visualization
+    - numpy: For numerical computations
+    - scikit-learn: For machine learning models
+
+Developed by:
+    Prof. Hernan Huwyler MBA CPA
+    Executive Director, IE Business School
+
+Keywords:
+    Risk, Compliance, Quantitative Risks, Modelling, Regression, Single Model
+"""
+
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.linear_model import LinearRegression
+
+# Input data for training
+employees = ['Ethan', 'Olivia', 'Jayden', 'Mia', 'Isabella', 'Joshua', 'Ava', 'Sophia', 'Liam']
+trained_hours = [0, 5, 12, 11, 20, 18, 25, 29, 19]
+compensations = [2500, 2200, 2600, 2000, 2000, 1800, 900, 1000, 1000]
+
+# Create the data
+hours_training = np.array(trained_hours)
+compensations = np.array(compensations)
+
+# Partition the dataset into the training and test sets
+np.random.seed(123)
+indices = np.random.rand(len(hours_training)) < 2/3
+training_set = {'HoursTraining': hours_training[indices], 'Compensations': compensations[indices]}
+test_set = {'HoursTraining': hours_training[~indices], 'Compensations': compensations[~indices]}
+
+# Fit the simple linear regression model
+regressor = LinearRegression()
+regressor.fit(training_set['HoursTraining'].reshape(-1, 1), training_set['Compensations'].reshape(-1, 1))
+
+# Predict the test set results
+test_predicted_compensations = regressor.predict(test_set['HoursTraining'].reshape(-1, 1))
+
+# Visualize the training set results
+plt.scatter(training_set['HoursTraining'], training_set['Compensations'], color='red')
+plt.plot(training_set['HoursTraining'], regressor.predict(training_set['HoursTraining'].reshape(-1, 1)), color='blue')
+plt.title('Compensations vs Hours of Training (Training set)')
+plt.xlabel('Hours of training')
+plt.ylabel('Compensations')
+plt.show()
+
+# Visualize the test set results
+plt.scatter(test_set['HoursTraining'], test_set['Compensations'], color='red')
+plt.plot(test_set['HoursTraining'], test_predicted_compensations, color='blue')
+plt.title('Compensations vs Hours of Training (Test set)')
+plt.xlabel('Hours of training')
+plt.ylabel('Compensations')
+plt.show()
+
+# Predict compensations for a new unseen case
+johnny_hours_training = np.array([0]).reshape(-1, 1)
+predicted_compensation = regressor.predict(johnny_hours_training)
+print("Estimated compensation losses caused by Johnny:", predicted_compensation[0][0])
+
+# Generate predictions for percentiles
+percentiles = np.arange(10, 100, 10)
+predicted_compensations_percentiles = np.percentile(test_set['Compensations'], percentiles)
+print("Predicted compensations for various percentiles:") 
+for p, c in zip(percentiles, predicted_compensations_percentiles):
+    print(f"Percentile: {p}%, Predicted Compensation: {c}")
