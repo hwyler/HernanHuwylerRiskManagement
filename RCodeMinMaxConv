@@ -1,0 +1,47 @@
+# Risk Assessment and Management in R - Prof. Hernan Huwyler MBA CPA
+
+# Set the parameters for risk assessment
+n <- 10000                  # Number of random simulations
+confidence_level <- 0.95    # Confidence level
+lower <- 1000               # Lower value of the risk parameter
+upper <- 2000               # Upper value of the risk parameter
+events <- 5                 # Expected number of trials in the time horizon
+chances <- 0.5              # Probability of each trial resulting in an incident
+
+# Calculate the error margin for the specified confidence level
+error <- (1 - confidence_level) / 2
+
+# Calculate the lower and upper quantiles for the confidence level
+lowerq <- qlnorm(error)      # Lower quantile for the confidence level
+upperq <- qlnorm(1 - error)  # Upper quantile for the confidence level
+
+# Log-transform the lower and upper bounds
+log_lower <- log(lower)
+log_upper <- log(upper)
+
+# Calculate the true mean and standard deviation of the log-transformed values
+true_mean_log <- (log_lower + log_upper) / 2
+true_sd_log <- (log_upper - log_lower) / (2 * qnorm(1 - error))
+
+# Generate random values from a log-normal distribution to simulate impacts
+x <- rlnorm(n, true_mean_log, true_sd_log)
+
+# Generate random values from a binomial distribution to simulate the number of incidents
+y <- rbinom(n, events, chances)
+
+# Initialize an empty vector to store the combined exposure
+exposure <- numeric(n)
+
+# Generate samples for each impact and incident, and sum them up
+for (i in 1:n) {
+  # Generate random impacts for each incident
+  impact_samples <- rlnorm(y[i], true_mean_log, true_sd_log)
+  # Sum up the impacts to get the exposure for each simulation
+  exposure[i] <- sum(impact_samples)
+}
+
+# Create a histogram for the calculated exposure
+hist(exposure, main="Distribution of Exposure", xlab="Exposure Value", ylab="Frequency")
+
+# Summary statistics for exposure
+summary(exposure)
