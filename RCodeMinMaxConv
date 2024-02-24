@@ -32,7 +32,7 @@ y <- rbinom(n, events, chances)
 # Initialize an empty vector to store the combined exposure
 exposure <- numeric(n)
 
-# Generate samples for each impact and incident, and sum them up
+# Generate samples for each impact size and incident count to simulate a process equivalent to discrete convolution, though without directly employing a convolution function
 for (i in 1:n) {
   # Generate random impacts for each incident
   impact_samples <- rlnorm(y[i], true_mean_log, true_sd_log)
