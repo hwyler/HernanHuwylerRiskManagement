@@ -1,0 +1,74 @@
+"""
+Multiple Linear Regression  Model for Estimating Compensation Risks
+
+Objective:
+    Develop a multiple factor linear regression model to estimate the risk of compensations due to insufficient training 
+    among contract managers. The model aims to provide insights into potential financial liabilities associated 
+    with inadequate training, location, overall job experience and age, assisting in risk assessment and decision-making.
+
+Libraries:
+    - matplotlib: For data visualization
+    - numpy: For numerical computations
+    - scikit-learn: For machine learning models
+
+Developed by:
+    Prof. Hernan Huwyler MBA CPA
+    Executive Director, IE Business School
+
+Keywords:
+    Risk, Compliance, Quantitative Risks, Modelling, Regression, Single Model
+"""
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Input data
+input_data = [
+    {"Manager": "Ethan", "TrainedHours": 0, "YearsExperience": 0, "SilverLake": 1, "ElysianPark": 0, "Age": 38, "Compensations": 2500},
+    {"Manager": "Olivia", "TrainedHours": 5, "YearsExperience": 0, "SilverLake": 1, "ElysianPark": 0, "Age": 28, "Compensations": 2200},
+    {"Manager": "Jayden", "TrainedHours": 12, "YearsExperience": 1, "SilverLake": 1, "ElysianPark": 0, "Age": 29, "Compensations": 2600},
+    {"Manager": "Mia", "TrainedHours": 11, "YearsExperience": 2, "SilverLake": 0, "ElysianPark": 1, "Age": 30, "Compensations": 2000},
+    {"Manager": "Isabella", "TrainedHours": 20, "YearsExperience": 1, "SilverLake": 0, "ElysianPark": 1, "Age": 41, "Compensations": 2000},
+    {"Manager": "Joshua", "TrainedHours": 18, "YearsExperience": 2, "SilverLake": 0, "ElysianPark": 0, "Age": 24, "Compensations": 1800},
+    {"Manager": "Ava", "TrainedHours": 25, "YearsExperience": 4, "SilverLake": 0, "ElysianPark": 1, "Age": 25, "Compensations": 900},
+    {"Manager": "Sophia", "TrainedHours": 29, "YearsExperience": 6, "SilverLake": 0, "ElysianPark": 0, "Age": 38, "Compensations": 1000},
+    {"Manager": "Liam", "TrainedHours": 19, "YearsExperience": 7, "SilverLake": 0, "ElysianPark": 0, "Age": 29, "Compensations": 1000}
+]
+
+# Convert input data into arrays
+X = np.array([[d["TrainedHours"], d["YearsExperience"], d["SilverLake"], d["ElysianPark"], d["Age"]] for d in input_data])
+y = np.array([d["Compensations"] for d in input_data])
+
+# Split data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train the model
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+# Make predictions
+y_pred = model.predict(X_test)
+
+# Plot results
+plt.scatter(y_test, y_pred)
+plt.xlabel("True Values")
+plt.ylabel("Predictions")
+plt.title("True vs. Predicted Values")
+plt.show()
+
+# Print coefficients
+print("Coefficients:", model.coef_)
+print("Intercept:", model.intercept_)
+
+# New unseen case
+new_case = {"Manager": "John", "TrainedHours": 0, "YearsExperience": 0, "SilverLake": 1, "ElysianPark": 0, "Age": 31}
+
+# Extract features from the new case
+new_X = np.array([[new_case["TrainedHours"], new_case["YearsExperience"], new_case["SilverLake"], new_case["ElysianPark"], new_case["Age"]]])
+
+# Predict compensation value
+predicted_compensation = model.predict(new_X)
+
+print("Predicted compensation for John:", predicted_compensation[0])
