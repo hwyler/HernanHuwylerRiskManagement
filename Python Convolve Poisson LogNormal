@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Data input
-Simulations = 10000   # Number of scenarios to simulate
+Simulations = 100000  # Number of scenarios to simulate
 Events = 4            # Number of expected annual events to materialize (Poisson distribution)
 Loss = 20000          # Expected average financial loss per event (Lognormal distribution)
 Mean = 0.2            # Standard deviation of the losses in R
