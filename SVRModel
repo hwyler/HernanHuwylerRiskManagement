@@ -1,3 +1,7 @@
+# Developed by Prof. Hernan Huwyler
+# Keywords: SVR, Support Vector Regression, Fines, Delays, Machine Learning, Prediction
+
+
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVR
@@ -90,3 +94,13 @@ print(f"Mean Absolute Error (MAE): {mae_delays:.2f}")
 print(f"Mean Squared Error (MSE): {mse_delays:.2f}")
 print(f"Root Mean Squared Error (RMSE): {rmse_delays:.2f}")
 print(f"R-squared (R2) Score: {r2_delays:.2f}")
+
+# New unseen case
+new_case = np.array([[0, 1, 0, 0, 1, 0, 440000, 1500]])
+
+# Predict fines and delays
+predicted_fines = svr_fines.predict(new_case)
+predicted_delays = svr_delays.predict(new_case)
+
+print("Predicted Fines:", predicted_fines[0])
+print("Predicted Delays:", predicted_delays[0])
