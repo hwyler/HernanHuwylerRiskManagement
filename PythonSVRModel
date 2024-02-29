@@ -109,3 +109,114 @@ predicted_delays = svr_delays.predict(new_case)
 
 print("Predicted Fines:", predicted_fines[0])
 print("Predicted Delays:", predicted_delays[0])
+
+
+
+#SECOND
+
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.svm import SVR
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Input data
+input_data = [
+    ["Winterthur", "Uster", "Dietikon", "Holti", "5C", "Cobitel", "Value", "Manpower", "Fines", "Delays"],
+    [1, 0, 0, 1, 0, 0, 230000, 577, 2422, 22],
+    [0, 1, 0, 0, 1, 0, 98000, 453, 929, 26],
+    [1, 0, 0, 0, 0, 1, 270000, 550, 3002, 16],
+    [0, 1, 0, 0, 1, 0, 540000, 1372, 5403, 34],
+    [1, 0, 0, 0, 0, 1, 140000, 489, 1464, 22],
+    [0, 0, 1, 0, 0, 1, 158500, 307, 2767, 12],
+    [0, 0, 1, 1, 0, 0, 54000, 134, 746, 4],
+    [1, 0, 0, 0, 1, 0, 365900, 684, 3400, 21],
+    [0, 0, 1, 0, 0, 1, 395000, 1379, 4998, 34],
+    [0, 0, 1, 0, 1, 0, 453000, 1146, 5320, 27],
+    [1, 0, 0, 1, 0, 0, 480000, 1203, 3977, 30],
+    [0, 1, 0, 0, 1, 0, 390000, 1365, 5715, 34]
+]
+
+# Extract features and targets
+features = np.array(input_data[1:])[:, :-2].astype(float)
+fines_target = np.array(input_data[1:])[:, -2].astype(float)
+delays_target = np.array(input_data[1:])[:, -1].astype(float)
+
+# Scale features
+scaler = StandardScaler()
+scaled_features = scaler.fit_transform(features)
+
+# Train-test split
+X_train, X_test, fines_y_train, fines_y_test = train_test_split(scaled_features, fines_target, test_size=0.2, random_state=123)
+_, _, delays_y_train, delays_y_test = train_test_split(scaled_features, delays_target, test_size=0.2, random_state=123)
+
+# Train SVR for Fines with GridSearchCV for hyperparameter tuning
+fines_svr = GridSearchCV(SVR(kernel='rbf'), param_grid={'C': [0.1, 1, 10], 'gamma': [0.1, 1, 10]}, scoring='neg_mean_squared_error')
+fines_svr.fit(X_train, fines_y_train)
+
+# Predict on test set
+fines_y_pred = fines_svr.predict(X_test)
+
+# Calculate metrics for Fines
+fines_mae = mean_absolute_error(fines_y_test, fines_y_pred)
+fines_mse = mean_squared_error(fines_y_test, fines_y_pred)
+fines_rmse = np.sqrt(fines_mse)
+fines_r2 = r2_score(fines_y_test, fines_y_pred)
+
+print("Fines - Mean Absolute Error (MAE):", fines_mae)
+print("Fines - Mean Squared Error (MSE):", fines_mse)
+print("Fines - Root Mean Squared Error (RMSE):", fines_rmse)
+print("Fines - R-squared (R2):", fines_r2)
+
+# Train SVR for Delays with GridSearchCV for hyperparameter tuning
+delays_svr = GridSearchCV(SVR(kernel='rbf'), param_grid={'C': [0.1, 1, 10], 'gamma': [0.1, 1, 10]}, scoring='neg_mean_squared_error')
+delays_svr.fit(X_train, delays_y_train)
+
+# Predict on test set
+delays_y_pred = delays_svr.predict(X_test)
+
+# Calculate metrics for Delays
+delays_mae = mean_absolute_error(delays_y_test, delays_y_pred)
+delays_mse = mean_squared_error(delays_y_test, delays_y_pred)
+delays_rmse = np.sqrt(delays_mse)
+delays_r2 = r2_score(delays_y_test, delays_y_pred)
+
+print("\nDelays - Mean Absolute Error (MAE):", delays_mae)
+print("Delays - Mean Squared Error (MSE):", delays_mse)
+print("Delays - Root Mean Squared Error (RMSE):", delays_rmse)
+print("Delays - R-squared (R2):", delays_r2)
+
+# Visualize results
+plt.scatter(fines_y_train, fines_svr.predict(X_train), color='blue', label='Train')
+plt.scatter(fines_y_test, fines_y_pred, color='red', label='Test')
+plt.xlabel('True Fines')
+plt.ylabel('Predicted Fines')
+plt.title('SVR for Fines - Train vs Test')
+plt.legend()
+plt.show()
+
+# Visualize Delays results
+delay_filter_test = delays_y_test <= 50
+delay_filter_pred = delays_y_pred <= 50
+
+plt.scatter(delays_y_train, delays_svr.predict(X_train), color='blue', label='Train')
+plt.scatter(delays_y_test[delay_filter_test], delays_y_pred[delay_filter_test], color='red', label='Test')
+plt.xlabel('True Delays')
+plt.ylabel('Predicted Delays')
+plt.title('SVR for Delays - Train vs Test')
+
+# Adjust y-axis limit
+plt.ylim(0, 50)
+
+plt.legend()
+plt.show()
+
+# Predicting a new unseen case
+unseen_case = scaler.transform([[0, 1, 0, 0, 1, 0, 440000, 1500]])
+predicted_fines = fines_svr.predict(unseen_case)
+predicted_delays = delays_svr.predict(unseen_case)
+
+print("\nPredicted fines for unseen case:", predicted_fines)
+print("Predicted delays for unseen case:", predicted_delays)
+
