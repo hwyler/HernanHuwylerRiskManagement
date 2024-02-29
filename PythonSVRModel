@@ -1,5 +1,10 @@
-# Developed by Prof. Hernan Huwyler
-# Keywords: SVR, Support Vector Regression, Fines, Delays, Machine Learning, Prediction
+# Project Risk quantification in Python. A repository for simulating and analyzing risk losses in fnes and work delays.
+
+# Status This project is actively being developed and is in the production  stage.
+
+# Tags/Topics - Risk management - Data Analysis - Python -  SVR - Support Vector Regression -  Machine Learning -  Prediction
+
+# License This project is open source, originally provided by Prof. Hernan Huwyler, MBA CPA.
 
 
 import numpy as np
