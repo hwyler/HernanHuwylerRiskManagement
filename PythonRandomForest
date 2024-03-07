@@ -1,0 +1,114 @@
+mport pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.preprocessing import StandardScaler
+
+# Data
+data = {
+    "Age": [45, 43, 23, 55, 21, 46, 42, 22, 52, 20,
+            44, 41, 21, 50, 20, 46, 42, 22, 51, 20,
+            48, 42, 22, 50, 19, 50, 42, 21, 52, 18,
+            48, 42, 21, 52, 19, 46, 44, 21, 52, 19,
+            44, 44, 21, 54, 19, 46, 44, 21, 54, 20,
+            46, 43, 20, 55, 20, 46, 43, 19, 54, 20,
+            48, 43, 18, 52, 20, 48, 43, 16, 54, 20,
+            47, 45, 16, 52, 20, 47, 47, 15, 54, 20,
+            47, 45, 15, 55, 21, 45, 46, 16, 54, 21,
+            45, 46, 16, 52, 21, 44, 47, 16, 54, 30],
+    "Income": [240000, 185000, 94000, 160000, 46000, 242605, 182648, 96891, 155387, 45165,
+               242534, 190018, 96821, 155620, 44908, 231813, 192531, 96107, 151681, 46081,
+               242670, 188338, 96844, 153819, 45438, 252324, 188649, 97921, 148323, 45347,
+               261372, 193624, 102504, 146370, 43147, 267385, 197951, 103820, 147871, 41062,
+               280515, 200633, 101810, 146523, 41263, 278412, 198123, 101794, 144041, 41297,
+               269913, 207420, 99594, 149598, 43325, 269810, 210382, 102565, 154011, 44545,
+               277572, 218601, 106646, 151419, 45012, 279593, 227284, 108559, 153239, 46103,
+               280799, 227595, 111019, 160339, 45085, 279651, 221389, 111971, 158161, 46377,
+               279269, 230970, 108525, 164466, 46249, 270601, 223615, 109632, 157556, 46740,
+               264076, 225106, 107146, 158044, 47618, 266490, 220539, 102923, 161145, 250000],
+    "Tickets": [2, 1, 5, 1, 7, 2, 1, 5, 1, 7,
+                2, 1, 4, 1, 9, 2, 1, 5, 1, 9,
+                2, 1, 5, 1, 5, 2, 1, 2, 1, 6,
+                2, 1, 2, 1, 6, 2, 1, 2, 1, 6,
+                2, 1, 2, 1, 6, 2, 1, 2, 1, 6,
+                2, 1, 2, 1, 6, 2, 1, 2, 1, 6,
+                2, 1, 2, 1, 6, 2, 1, 2, 1, 6,
+                2, 1, 2, 1, 6, 2, 1, 2, 1, 6,
+                2, 1, 2, 1, 6, 2, 1, 2, 1, 6,
+                2, 1, 2, 1, 6, 2, 1, 2, 1, 7],
+    "Household": [3, 4, 1, 4, 1, 3, 3, 1, 4, 1,
+                  3, 3, 1, 4, 1, 3, 2, 1, 3, 1,
+                  4, 2, 1, 3, 1, 3, 2, 1, 3, 1,
+                  4, 2, 1, 3, 1, 4, 2, 1, 3, 1,
+                  4, 2, 1, 3, 1, 4, 2, 1, 3, 1,
+                  4, 2, 1, 3, 1, 4, 2, 1, 3, 1,
+                  4, 2, 1, 3, 1, 4, 2, 1, 3, 1,
+                  4, 2, 1, 3, 1, 4, 2, 1, 3, 1,
+                  4, 2, 1, 3, 1, 4, 2, 1, 3, 1,
+                  4, 2, 1, 3, 1, 4, 2, 1, 3, 1],
+    "Renew": [1, 1, 0, 1, 0, 1, 1, 0, 1, 0,
+              1, 1, 0, 1, 0, 1, 1, 0, 1, 0,
+              1, 1, 1, 1, 1, 0, 1, 1, 0, 1,
+              0, 1, 0, 1, 1, 0, 1, 0, 1, 1,
+              0, 1, 0, 0, 1, 0, 1, 0, 1, 1,
+              0, 1, 0, 1, 1, 0, 1, 0, 1, 1,
+              0, 1, 0, 1, 1, 0, 1, 0, 1, 1,
+              0, 1, 0, 1, 1, 0, 1, 0, 1, 1,
+              0, 1, 0, 1, 1, 0, 1, 0, 0, 1,
+              0, 1, 0, 1, 1, 0, 1, 0, 1, 1]
+}
+
+# Features and target
+X = pd.DataFrame(data, columns=['Age', 'Income', 'Tickets', 'Household'])
+y = data['Renew']
+
+# Scaling the data
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Splitting the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+
+# Creating and training the Random Forest Classifier
+rf_classifier = RandomForestClassifier(n_estimators=100, bootstrap=True, random_state=42)
+rf_classifier.fit(X_train, y_train)
+
+# Predicting the training set results
+y_train_pred = rf_classifier.predict(X_train)
+
+# Evaluating the model on training set
+train_accuracy = accuracy_score(y_train, y_train_pred)
+print("Training Accuracy:", train_accuracy)
+
+# Predicting the testing set results
+y_test_pred = rf_classifier.predict(X_test)
+
+# Evaluating the model on testing set
+test_accuracy = accuracy_score(y_test, y_test_pred)
+print("Testing Accuracy:", test_accuracy)
+
+# Classification Report
+print("Classification Report:")
+print(classification_report(y_test, y_test_pred))
+
+# Confusion Matrix
+conf_matrix = confusion_matrix(y_test, y_test_pred)
+print("Confusion Matrix:")
+print(conf_matrix)
+
+# Plotting Confusion Matrix
+plt.figure(figsize=(8, 6))
+plt.imshow(conf_matrix, cmap=plt.cm.Blues)
+plt.colorbar()
+plt.title('Confusion Matrix')
+plt.xlabel('Predicted Labels')
+plt.ylabel('True Labels')
+plt.xticks([0, 1], ['Not Renew', 'Renew'])
+
+plt.show()
+
+# Predicting the changes of review for a new case
+new_case = scaler.transform([[47, 230000, 0, 2]])
+prediction = rf_classifier.predict(new_case)
+print("Predicted Review Change for New Case:", prediction)
