@@ -107,7 +107,7 @@ loss_std = (np.log(max_loss) - np.log(min_loss)) * (1 - loss_confidence) / 2
 prob_mean = min_incidents + (max_incidents - min_incidents) * prob_confidence
 
 # Perform Monte Carlo simulations
-num_simulations = 10000
+num_simulations = 100000
 losses = lognorm.rvs(loss_std, scale=np.exp(loss_mean), size=num_simulations)
 probabilities = poisson.rvs(prob_mean, size=num_simulations)
 exposures = losses * probabilities
