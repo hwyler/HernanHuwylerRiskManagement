@@ -7,6 +7,64 @@ This repository contains a Python code for assessing risks using Monte Carlo sim
 range of losses, the confidence level in setting the range of losses, the expected range of the number of incidents per year, and the 
 confidence level in setting the range of probabilities.
 
+How to Use the Risk Assessment Python Code
+
+This Python code is designed to assess risks using Monte Carlo simulations. 
+It allows users to input the expected range of losses and probabilities in the best and worst scenarios, 
+along with a confidence level. The code then generates random samples based on the provided inputs and 
+calculates the expected exposures.
+It can be run on this web compiler https://www.codabrainy.com/en/python-compiler/
+
+Inputs
+    - Expected Maximum and Minimum Values of a Loss
+    These inputs represent the range of losses that you expect in the worst and best scenarios, 
+    respectively. For example, if you estimate that the loss per event could range from 90 to 100 USD, 
+    you would enter 100 as the maximum value and 90 as the minimum value.
+    - Confidence Level in Setting the Range of Losses: 
+    This input represents your confidence in the estimated range of losses. It is a value between 0 and 1 (as percentage). 
+    For instance, if you set the confidence level to 0.9 (90%), it means that you expect 10% of the events to 
+    cause losses lower than the minimum value (e.g., 90 USD) or higher than the maximum value (e.g., 100 USD).
+    - Expected Maximum and Minimum Number of Expected Incidents per Year: 
+    These inputs represent the range of the number of incidents you expect to occur in a year, 
+    in the worst and best scenarios, respectively. The incidents are whole numbers or counting numbers (1, 2, 3).
+    - Confidence Level in Setting the Range of Probabilities: 
+    This input represents your confidence in the estimated range of the number of incidents. 
+    It is a value between 0 and 1.
+
+Log-normal Distribution
+
+The code assumes that the distribution of losses follows a log-normal distribution. 
+This distribution is commonly used to model operational incidents because it allows for a 
+long tail of events causing higher losses. In other words, there are more scenarios 
+that can cause losses exceeding the maximum value compared to scenarios causing losses below the minimum value.
+
+Convolution
+
+The code performs a convolution between the losses and probabilities to calculate the expected exposures. 
+Convolution is a mathematical operation that combines two functions (in this case, the log-normal distribution 
+of losses and the Poisson distribution of probabilities) to produce a third function 
+(the distribution of expected exposures).
+In the context of risk assessment, convolution helps to determine the distribution of total losses by considering both the severity of individual losses and the frequency of incidents. By convolving the loss distribution with the probability distribution, the code generates a distribution of expected exposures that takes into account the variability in both losses and probabilities.
+
+Use case
+Example to illustrate the inputs and interpretation of the results:
+
+    Expected Maximum Value of a Loss: 100 USD
+    Expected Minimum Value of a Loss: 90 USD
+    Confidence Level in Setting the Range of Losses: 0.9 (90%)
+    Expected Maximum Number of Expected Incidents per Year: 10
+    Expected Minimum Number of Expected Incidents per Year: 5
+    Confidence Level in Setting the Range of Probabilities: 0.8 (80%)
+
+In this example, you estimate that the loss per event could range from 90 to 100 USD, 
+with a 90% confidence level. This means that you expect 10% of the events to cause losses lower
+than 90 USD or higher than 100 USD. Additionally, you estimate that the number of incidents per 
+year could range from 5 to 10, with an 80% confidence level.
+The code will generate random samples based on these inputs and calculate the expected exposures. 
+The resulting histogram and loss exceedance curve will provide insights into the distribution of 
+expected exposures and the probability of exceeding different exposure levels.
+
+
 Libraries:
     - numpy for mathematical operations and array manipulation
     - matplotlib.pyplot for data visualization
@@ -16,7 +74,7 @@ Libraries:
 
 Developed by:
     Prof. Hernan Huwyler MBA CPA
-    Executive Director, IE Business School
+    Academic Director, IE Business School, IE Law School, IE Executive Education
 
 Keywords:
     Risk, Compliance, Quantitative Risks, Modelling, Covolution, Monte Carlo Simulations
