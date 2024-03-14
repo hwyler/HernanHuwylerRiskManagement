@@ -1,0 +1,87 @@
+"""
+Risk Assessment with User Prompts
+
+
+Objective:
+This repository contains a Python code for assessing risks using Monte Carlo simulations. The code allows users to input the expected 
+range of losses, the confidence level in setting the range of losses, the expected range of the number of incidents per year, and the 
+confidence level in setting the range of probabilities.
+
+Libraries:
+    - numpy for mathematical operations and array manipulation
+    - matplotlib.pyplot for data visualization
+    - scipy.stats.lognorm for generating random numbers from a log-normal distribution
+    - scipy.stats.poisson for generating random numbers from a Poisson distribution
+
+
+Developed by:
+    Prof. Hernan Huwyler MBA CPA
+    Executive Director, IE Business School
+
+Keywords:
+    Risk, Compliance, Quantitative Risks, Modelling, Covolution, Monte Carlo Simulations
+    Log-normal Distribution, Poisson Distribution, Expected Exposures, Loss Exceedance Curve
+
+License
+
+This code is licensed under the MIT License. See the LICENSE file for more information.
+
+Created by: Prof. Hernan Huwyler
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import lognorm, poisson
+
+# User inputs
+max_loss = float(input("Enter the expected maximum value of a loss: "))
+min_loss = float(input("Enter the expected minimum value of a loss: "))
+loss_confidence = float(input("Enter the confidence level in setting the range of losses (0-1): "))
+max_incidents = int(input("Enter the expected maximum number of expected incidents per year: "))
+min_incidents = int(input("Enter the expected minimum number of expected incidents per year: "))
+prob_confidence = float(input("Enter the confidence level in setting the range of probabilities (0-1): "))
+
+# Calculate parameters for log-normal distribution of impacts
+loss_mean = np.log(min_loss) + (np.log(max_loss) - np.log(min_loss)) * loss_confidence
+loss_std = (np.log(max_loss) - np.log(min_loss)) * (1 - loss_confidence) / 2
+
+# Calculate parameters for Poisson distribution of probabilities
+prob_mean = min_incidents + (max_incidents - min_incidents) * prob_confidence
+
+# Perform Monte Carlo simulations
+num_simulations = 10000
+losses = lognorm.rvs(loss_std, scale=np.exp(loss_mean), size=num_simulations)
+probabilities = poisson.rvs(prob_mean, size=num_simulations)
+exposures = losses * probabilities
+
+# Calculate statistics of expected exposures
+percentiles = np.arange(0.1, 1, 0.1)
+exposure_stats = np.percentile(exposures, percentiles * 100)
+
+# Display statistics
+print("Expected Exposures:")
+for p, e in zip(percentiles, exposure_stats):
+    print(f"P({int(p*100)}): {e:.2f}")
+
+# Display histogram
+plt.figure(figsize=(8, 6))
+plt.hist(exposures, bins=50, density=True, alpha=0.7)
+plt.xlabel("Exposure")
+plt.ylabel("Probability Density")
+plt.title("Histogram of Expected Exposures")
+plt.grid(True)
+plt.show()
+
+input("Press any key to continue...")
+
+# Display loss exceedance curve
+sorted_exposures = np.sort(exposures)
+exceedance_probabilities = 1 - np.arange(1, len(exposures) + 1) / len(exposures)
+
+plt.figure(figsize=(8, 6))
+plt.plot(sorted_exposures, exceedance_probabilities)
+plt.xlabel("Exposure")
+plt.ylabel("Exceedance Probability")
+plt.title("Loss Exceedance Curve")
+plt.grid(True)
+plt.show()
