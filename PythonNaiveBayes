@@ -1,0 +1,92 @@
+"""
+Regulatory AML Compliance Risk Model with Gaussian Naive Bayes 
+
+Objective:
+    Develop a Bayesian analysis using a Gaussian Naive Bayes classifier to improve the probability calculation for the 
+    risk of missing the escalation of AML due diligence. The code handles both prior and new data, encodes categorical features, 
+    scales numerical features, trains the model on the prior data, makes predictions on the new data, and evaluates the accuracy. 
+    Additionally, it plots the data points for visualization and displays data statistics along with prediction results.
+
+Libraries:
+    - matplotlib: For data visualization
+    - scikit-learn: For machine learning models to use Gaussian Naive Bayes 
+
+Developed by:
+    Prof. Hernan Huwyler MBA CPA
+    Executive Director, IE Business School
+
+Keywords:
+    Risk, Compliance, Quantitative Risks, Modelling, Gaussian Naive Bayes, Risk Management
+"""
+
+# Import the libraries 
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+from sklearn.naive_bayes import GaussianNB
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+
+# Input the prior data
+data = {
+    'Employee': ['Liam', 'Harper', 'Liam', 'Olivia', 'Olivia', 'Liam', 'Olivia', 'Harper', 'Noah'],
+    'Customer Ind': ['AI', 'Biotechnology', 'Biotechnology', 'Clean Energy', 'Biotechnology', 'Aerospace', 'Aerospace', 'Biotechnology', 'Clean Energy'],
+    'Revenue USD': [430323, 892805, 1137237, 1033462, 555379, 956342, 595394, 908787, 82805],
+    'AML Training': [23, 11, 23, 15, 15, 23, 15, 12, 6],
+    'Structure': ['Private', 'Private', 'Private', 'Startup', 'Startup', 'Private', 'Startup', 'Private', 'Private']
+}
+
+# Input the new data
+new_data = {
+    'Employee': ['Noah', 'Noah', 'Olivia'],
+    'Customer Ind': ['Biotechnology', 'Biotechnology', 'Biotechnology'],
+    'Revenue USD': [1267450, 694461, 558778],
+    'AML Training': [6, 6, 16],
+    'Structure': ['Startup', 'Private', 'Private']
+}
+
+
+# Convert prior and new data to pandas DataFrame
+prior_df = pd.DataFrame(data)
+new_df = pd.DataFrame(new_data)
+
+# Combine the prior and new data to find all unique labels
+all_data = pd.concat([prior_df, new_df])
+
+# Create a label encoder and fit it on the combined data
+label_encoder = LabelEncoder()
+all_data['Employee'] = label_encoder.fit_transform(all_data['Employee'])
+all_data['Customer Ind'] = label_encoder.fit_transform(all_data['Customer Ind'])
+all_data['Structure'] = label_encoder.fit_transform(all_data['Structure'])
+
+# Split the data back into prior and new
+prior_df = all_data.loc[prior_df.index]
+new_df = all_data.loc[new_df.index]
+
+# #Scale the data
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
+prior_df[['Revenue USD', 'AML Training']] = scaler.fit_transform(prior_df[['Revenue USD', 'AML Training']])
+new_df[['Revenue USD', 'AML Training']] = scaler.transform(new_df[['Revenue USD', 'AML Training']])
+
+# Prepare the features and target
+X_prior = prior_df.drop('Employee', axis=1)
+y_prior = prior_df['Employee']
+X_new = new_df.drop('Employee', axis=1)
+y_new = new_df['Employee']
+
+# Train the Naive Bayes classifier on the prior data
+clf = GaussianNB()
+clf.fit(X_prior, y_prior)
+
+# Evaluate the model on the new data
+y_pred = clf.predict(X_new)
+accuracy = accuracy_score(y_new, y_pred)
+print(f"Accuracy on new data: {accuracy:.2f}")
+
+# Display the results and statistics
+print("Prior Data Statistics:")
+print(prior_df.describe())
+print("\nNew Data Statistics:")
+print(new_df.describe())
+print("\nPrediction Results:")
+print(pd.DataFrame({'Actual': y_new, 'Predicted': y_pred}))
