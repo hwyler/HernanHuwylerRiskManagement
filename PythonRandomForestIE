@@ -1,0 +1,89 @@
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import f1_score, mean_absolute_error, mean_squared_error, r2_score
+import matplotlib.pyplot as plt
+
+# Define the historical cases data
+historical_cases_data = {
+    'DD score': [97, 94, 86, 89, 84, 70, 98, 66, 80, 91],
+    'Category': ['Data', 'Data', 'Hardware', 'Hardware', 'Consulting', 'Hardware', 'Data', 'Hardware', 'Consulting', 'Data'],
+    'Area': ['Bay area', 'Los Angeles', 'Central valley', 'Central valley', 'Los Angeles', 'Central valley', 'Bay area', 'Los Angeles', 'Los Angeles', 'Bay area'],
+    'Size': ['Large', 'Large', 'Mid', 'Mid', 'Large', 'Small', 'Large', 'Small', 'Mid', 'Large'],
+    'Vendor manager': ['Liam', 'Liam', 'Logan', 'Logan', 'Liam', 'Logan', 'Liam', 'Logan', 'Logan', 'Liam'],
+    'Disputes': ['No', 'No', 'Yes', 'Yes', 'No', 'Yes', 'No', 'Yes', 'No', 'No']
+}
+
+# Define the new unseen cases data
+new_unseen_cases_data = {
+    'DD score': [95, 65],
+    'Category': ['Data', 'Hardware'],
+    'Area': ['Bay area', 'Los Angeles'],
+    'Size': ['Large', 'Mid'],
+    'Vendor manager': ['Liam', 'Logan'],
+    'Disputes': ['No', 'No']
+}
+
+# Convert dictionaries to DataFrames
+historical_df = pd.DataFrame(historical_cases_data)
+new_unseen_df = pd.DataFrame(new_unseen_cases_data)
+
+# Encode categorical features
+label_encoders = {}
+for column in historical_df.select_dtypes(include=['object']).columns:
+    label_encoders[column] = LabelEncoder()
+    historical_df[column] = label_encoders[column].fit_transform(historical_df[column])
+    new_unseen_df[column] = label_encoders[column].transform(new_unseen_df[column])
+
+# Scale numerical features
+scaler = StandardScaler()
+historical_df[['DD score']] = scaler.fit_transform(historical_df[['DD score']])
+new_unseen_df[['DD score']] = scaler.transform(new_unseen_df[['DD score']])
+
+# Check for any mismatch in the number of features
+print("Number of features in historical data:", historical_df.shape[1])
+print("Number of features in new unseen data:", new_unseen_df.shape[1])
+
+# Splitting the historical dataset into features (X) and target (y)
+X_train = historical_df.drop(columns=['Disputes'])
+y_train = historical_df['Disputes']
+
+# Training a classifier to predict disputes
+classifier = RandomForestClassifier(n_estimators=100, random_state=42)
+classifier.fit(X_train, y_train)
+
+# Predicting disputes for the new unseen cases
+new_unseen_predictions = classifier.predict_proba(new_unseen_df.drop(columns=['Disputes']))
+print("Chances of causing disputes for new unseen cases:")
+for i, prob in enumerate(new_unseen_predictions):
+    print(f"Case {i+1}: {prob[1]}")
+
+# Evaluate the classifier's performance
+train_predictions = classifier.predict(X_train)
+
+# Compute evaluation metrics
+f1_train = f1_score(y_train, train_predictions, zero_division=0)
+mae_train = mean_absolute_error(y_train, train_predictions)
+mse_train = mean_squared_error(y_train, train_predictions)
+rmse_train = mean_squared_error(y_train, train_predictions, squared=False)
+r2_train = r2_score(y_train, train_predictions)
+
+print("\nTraining Set:")
+print("F1 Score:", f1_train)
+print("MAE:", mae_train)
+print("MSE:", mse_train)
+print("RMSE:", rmse_train)
+print("R-squared:", r2_train)
+
+# Plot DD Score for training and testing sets
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(historical_df.drop(columns=['Disputes']), historical_df['Disputes'], test_size=0.2, random_state=42)
+plt.figure(figsize=(10, 6))
+plt.scatter(X_train['DD score'], y_train, color='blue', label='Training Set')
+plt.scatter(X_test['DD score'], y_test, color='green', label='Testing Set')
+plt.xlabel('DD Score')
+plt.ylabel('Disputes')
+plt.title('DD Score vs. Disputes')
+plt.legend()
+plt.grid(True)
+plt.show()
