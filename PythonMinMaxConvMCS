@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import lognorm, poisson, norm
 
 # Data input
-Simulations = 1000000  # Number of scenarios to simulate
+Simulations = 100000  # Number of scenarios to simulate
 lower = 1000  # Lower value of the potential loss
 upper = 2000  # Upper value of the potential loss
 confidence_level = 0.8  # Confidence level in the estimated loss
