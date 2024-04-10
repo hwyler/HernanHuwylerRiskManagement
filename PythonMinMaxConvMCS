@@ -1,0 +1,90 @@
+"""
+Multiple Linear Regression  Model for Estimating Compensation Risks
+
+Objective:
+    This Python code is a Monte Carlo simulation designed to quantify risk using convolution on minimum and maximum losses in a 
+   lognormal distribution and probabilities in a Poisson distribution.
+
+Libraries:
+    - matplotlib: For data visualization
+    - scipy.stats: Specifically, importing lognorm, poisson, and norm for probability distributions.
+    - matplotlib.pyplot: For plotting graphs
+
+Developed by:
+    Prof. Hernan Huwyler MBA CPA
+    Executive Director, IE Business School
+
+Keywords:
+    Risk, Compliance, Quantitative Risks, Modelling, Regression, Convolution, Monte Carlo Simulation, Confidence Interval
+"""
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import lognorm, poisson, norm
+
+# Data input
+Simulations = 1000000  # Number of scenarios to simulate
+lower = 1000  # Lower value of the potential loss
+upper = 2000  # Upper value of the potential loss
+confidence_level = 0.8  # Confidence level in the estimated loss
+Events = 4  # Number of expected annual events to materialize (Poisson distribution)
+Reserve = 0.75  # This percentile is a measure of the risk exposure
+np.random.seed(123)  # Set a random seed for replicability
+
+# Calculate lower and upper quantiles for the confidence level
+error = (1 - confidence_level) / 2
+lowerq = lognorm.ppf(error, s=np.log(upper / lower))  # Lower quantile for the confidence level
+upperq = lognorm.ppf(1 - error, s=np.log(upper / lower))  # Upper quantile for the confidence level
+
+# Calculate the true mean and standard deviation of the log-transformed values
+true_mean_log = (np.log(lower) + np.log(upper)) / 2
+true_sd_log = (np.log(upper) - np.log(lower)) / (2 * norm.ppf(0.9))
+
+# Generate random values from a log-normal distribution to simulate impacts
+Loss = lognorm.rvs(s=true_sd_log, scale=np.exp(true_mean_log), size=Simulations)
+
+# Simulate Poisson-distributed random variables (number of events)
+Prob = poisson.rvs(Events, size=Simulations)
+
+# Combine distributions using convolution for each scenario separately
+combined_distribution = [np.convolve(Prob[i], Loss[i], mode='full') for i in range(Simulations)]
+
+# Calculate the total loss for each scenario
+x = np.array([np.sum(combined_distribution[i]) for i in range(Simulations)])
+
+# Display a summary of the simulated data
+print(f'Mean: {np.mean(x)}')
+
+# Calculate the percentiles and the given percentile of the simulated losses
+loss_at_reserve = np.percentile(x, Reserve * 100)
+print(f'{Reserve * 100}th Percentile Loss: {loss_at_reserve}')
+percentiles = [10, 20, 30, 40, 50, 60, 70, 80, 90, 99]
+for p in percentiles:
+    print(f'P({p}): {np.percentile(x, p)}')
+
+# Graph a Loss Exceedance Curve
+number_sequence = np.arange(0.01, 1.001, 0.001)
+y = [np.percentile(x, i * 100) for i in number_sequence]
+plt.plot(number_sequence, y, marker='o')
+plt.xlabel('Percentile')
+plt.ylabel('Loss')
+plt.title('Loss Exceedance Curve')
+plt.show()
+
+# Plot histogram for potential losses
+plt.figure(figsize=(8, 6))
+plt.hist(Loss, bins=1000, density=True, alpha=0.8, color='skyblue', edgecolor='skyblue')
+plt.title('Potential Losses', fontsize=16)
+plt.xlabel('Loss', fontsize=14)
+plt.ylabel('Density', fontsize=14)
+plt.show()
+
+# Plot histogram for potential incidents
+plt.figure()
+num_bins = int(np.max(Prob)) + 1  # Calculate the number of bins based on the maximum value in Prob
+plt.hist(Prob, bins=num_bins, density=True)
+plt.title('Potential Incidents')
+plt.xlabel('Number of Incidents')
+plt.ylabel('Density')
+plt.show()
