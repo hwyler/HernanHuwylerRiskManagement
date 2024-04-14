@@ -1,0 +1,87 @@
+import pandas as pd
+import tensorflow as tf
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+
+# Input the training data
+data = {
+    "Credit Score": [720, 550, 600, 750, 420, 620, 780, 480, 650, 700, 430, 680, 730, 460, 660],
+    "Day Payment Delay": [15, 45, 30, 10, 60, 25, 5, 40, 20, 12, 50, 18, 8, 35, 22],
+    "Annual Income": [120000, 90000, 110000, 150000, 75000, 100000, 200000, 85000, 120000, 180000, 80000, 130000, 190000, 95000, 115000],
+    "Employment Status": [3, 0, 1, 2, 0, 1, 2, 0, 1, 3, 0, 1, 3, 0, 1],
+    "Debt-to-Income": ["25%", "50%", "30%", "15%", "80%", "40%", "10%", "60%", "35%", "20%", "90%", "28%", "12%", "70%", "33%"],
+    "Loan Amount": [10000, 8000, 9000, 12000, 6000, 8500, 15000, 7000, 10000, 14000, 6500, 11000, 14500, 7500, 9500],
+    "Loan Term": [36, 24, 30, 48, 18, 27, 60, 21, 33, 45, 15, 39, 54, 24, 30]
+}
+
+df = pd.DataFrame(data)
+
+# Preprocess the data
+df["Debt-to-Income"] = df["Debt-to-Income"].str.rstrip("%").astype(float) / 100
+
+X = df.drop("Day Payment Delay", axis=1)
+y = df["Day Payment Delay"]
+
+# Scale and encode the data
+preprocessor = ColumnTransformer(
+    transformers=[
+        ("num", StandardScaler(), ["Credit Score", "Annual Income", "Debt-to-Income", "Loan Amount", "Loan Term"]),
+        ("cat", OneHotEncoder(), ["Employment Status"])
+    ])
+
+X = preprocessor.fit_transform(X)
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Create a random forest model using TensorFlow
+model = Sequential([
+    Dense(128, activation="relu", input_shape=(X_train.shape[1],)),
+    Dense(64, activation="relu"),
+    Dense(32, activation="relu"),
+    Dense(1)
+])
+
+from tensorflow.keras.optimizers import Adam
+
+optimizer = Adam(learning_rate=0.001)
+model.compile(optimizer=optimizer, loss="mse")
+
+model.fit(X_train, y_train, epochs=500, batch_size=16, verbose=1)
+
+# Input for prediction
+print("Enter the details for prediction:")
+loan_amount = float(input("Loan Amount: "))
+loan_term = int(input("Loan Term: "))
+credit_score = int(input("Credit Score: "))
+debt_to_income = float(input("Debt-to-Income (in decimal, .5 for 50%): "))
+annual_income = float(input("Annual Income: "))
+print("Employment Status:")
+print("0 - None")
+print("1 - Employed")
+print("2 - Self-Employed")
+print("3 - Rent")
+employment_status = int(input("Enter the corresponding number for Employment Status: "))
+
+new_data = {
+    "Loan Amount": [loan_amount],
+    "Loan Term": [loan_term],
+    "Credit Score": [credit_score],
+    "Debt-to-Income": [debt_to_income],
+    "Annual Income": [annual_income],
+    "Employment Status": [employment_status]
+}
+
+new_df = pd.DataFrame(new_data)
+
+# Preprocess the new input
+new_df["Debt-to-Income"] = new_df["Debt-to-Income"].astype(float)
+new_X = preprocessor.transform(new_df)
+
+# Predict the day payment delay
+prediction = model.predict(new_X)
+print("Predicted Day Payment Delay:", prediction[0][0])
+
