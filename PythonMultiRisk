@@ -1,0 +1,112 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import norm, uniform, poisson, binom, lognorm
+
+# Ask the user to input data
+num_risks = int(input("Enter the number of risks you want to assess: "))
+
+impact_best = []
+impact_worst = []
+confidence_level = []
+impact_distribution = []
+probability = []
+probability_distribution = []
+
+for i in range(num_risks):
+    impact_best.append(float(input(f"Enter the impact (expected loss) of risk {i+1} in the best-case scenario: ")))
+    impact_worst.append(float(input(f"Enter the impact (expected loss) of risk {i+1} in the worst-case scenario: ")))
+    confidence_level.append(float(input(f"Enter the confidence level for risk {i+1} (0-1): ")))
+
+    impact_distribution_type = int(input(f"Enter the distribution type for the impact of risk {i+1} (1 - Normal, 2 - Log Normal, 3 - Uniform): "))
+    if impact_distribution_type == 1:
+        impact_distribution.append(norm)
+    elif impact_distribution_type == 2:
+        impact_distribution.append(lognorm)
+    elif impact_distribution_type == 3:
+        impact_distribution.append(uniform)
+    else:
+        print("Invalid distribution type. Using normal distribution as default.")
+        impact_distribution.append(norm)
+
+    probability.append(float(input(f"Enter the probability of occurrence of events in the time horizon of the risk {i+1}: ")))
+
+    probability_distribution_type = int(input(f"Enter the distribution type for the probability of occurrence of risk {i+1} (1 - Poisson, 2 - Binomial): "))
+    if probability_distribution_type == 1:
+        probability_distribution.append(poisson)
+    elif probability_distribution_type == 2:
+        probability_distribution.append(binom)
+    else:
+        print("Invalid distribution type. Using Poisson distribution as default.")
+        probability_distribution.append(poisson)
+
+# Normalize the probability array to ensure it sums up to 1
+probability = np.array(probability) / np.sum(probability)
+
+# Define the number of Monte Carlo simulations
+num_simulations = 10000
+
+# Initialize arrays to store the results
+risk_values = np.zeros(num_simulations)
+risk_probabilities = np.zeros(num_simulations)
+
+# Perform Monte Carlo simulations
+for i in range(num_simulations):
+    # Randomly select a risk
+    risk_index = np.random.choice(num_risks, p=probability)
+
+    # Generate a random impact value based on the selected distribution
+    if impact_distribution[risk_index] == norm:
+        impact_mean = (impact_best[risk_index] + impact_worst[risk_index]) / 2
+        impact_std = (impact_worst[risk_index] - impact_best[risk_index]) / (2 * norm.ppf(confidence_level[risk_index]))
+        impact_value = impact_distribution[risk_index].rvs(loc=impact_mean, scale=impact_std, size=1)[0]
+    elif impact_distribution[risk_index] == lognorm:
+        impact_mean = np.log((impact_best[risk_index] + impact_worst[risk_index]) / 2)
+        impact_std = np.log(impact_worst[risk_index] / impact_best[risk_index]) / (2 * norm.ppf(confidence_level[risk_index]))
+        impact_value = impact_distribution[risk_index].rvs(scale=np.exp(impact_mean), s=impact_std, size=1)[0]
+    else:  # uniform
+        impact_value = impact_distribution[risk_index].rvs(loc=impact_best[risk_index], scale=impact_worst[risk_index] - impact_best[risk_index], size=1)[0]
+
+
+    # Generate a random probability value based on the selected distribution
+    probability_value = probability_distribution[risk_index].rvs(mu=probability[risk_index], size=1)[0]
+
+    # Calculate the risk value using convolution
+    risk_values[i] = impact_value * probability_value
+    risk_probabilities[i] = probability_value
+
+# Calculate the annual exposure at different percentiles
+percentiles = [10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 99]
+annual_exposure = np.percentile(risk_values, percentiles)
+
+print("Annual Exposure:")
+for p, exposure in zip(percentiles, annual_exposure):
+    print(f"P({p}): {exposure:.2f}")
+
+# Calculate the expected value of the risk
+expected_risk = np.mean(risk_values)
+print(f"\nExpected Risk: {expected_risk:.2f}")
+
+# Calculate the standard deviation of the risk
+std_dev_risk = np.std(risk_values)
+print(f"Standard Deviation of Risk: {std_dev_risk:.2f}")
+
+# Plot the histogram of risk values
+plt.hist(risk_values, bins=50, alpha=0.5, label="Risk Values")
+plt.xlabel("Risk Value")
+plt.ylabel("Frequency")
+plt.title("Histogram of Risk Values")
+plt.show()
+
+# Plot the cumulative distribution function (CDF) of risk values
+risk_cdf = np.cumsum(np.sort(risk_values)) / num_simulations
+plt.plot(np.sort(risk_values), risk_cdf)
+plt.xlabel("Risk Value")
+plt.ylabel("Cumulative Probability")
+plt.title("Cumulative Distribution Function of Risk Values")
+plt.show()
+
+# List the risks by expected value
+top_risks = np.argsort(-risk_values)[:5]
+print("\nAll Risks by Expected Value:")
+for i in top_risks:
+    print(f"Risk {i+1}: Expected Value = {risk_values[i]:.2f}, Probability = {risk_probabilities[i]:.2f}")
