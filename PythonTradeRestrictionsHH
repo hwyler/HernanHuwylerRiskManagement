@@ -1,0 +1,87 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+
+# Training data
+training_data = {
+    'Sector': ['Police', 'Sport', 'Defense', 'Police', 'Oil', 'Defense', 'Defense', 'Defense', 'Defense', 'Defense', 'Police', 'Police', 'Defense', 'Defense', 'Sport', 'Sport', 'Sport', 'Defense', 'Defense', 'Police'],
+    'Export': ['Firearms', 'Firearms', 'Laser', 'Firearms', 'Explosives', 'Firearms', 'Ammunition', 'Firearms', 'Explosives', 'Explosives', 'Firearms', 'Ammunition', 'Laser', 'Firearms', 'Ammunition', 'Ammunition', 'Firearms', 'Firearms', 'Firearms', 'Ammunition'],
+    'Origin': ['Germany', 'Germany', 'Israel', 'Israel', 'Germany', 'Israel', 'Israel', 'Germany', 'Israel', 'Israel', 'Germany', 'Germany', 'Israel', 'Germany', 'Germany', 'Germany', 'Germany', 'Israel', 'Israel', 'Germany'],
+    'Destination': ['Switzerland', 'Singapore', 'Turkey', 'Turkey', 'Qatar', 'Cyprus', 'Cyprus', 'Poland', 'Cyprus', 'Cyprus', 'China', 'Austria', 'Lebanon', 'Chad', 'Switzerland', 'Switzerland', 'Denmark', 'Azerbaijan', 'Azerbaijan', 'Poland'],
+    'End use': ['Switzerland', 'Singapore', 'Unknown', 'Turkey', 'Qatar', 'Unknown', 'Unknown', 'Poland', 'Unknown', 'Unknown', 'China', 'Austria', 'Lebanon', 'Chad', 'Switzerland', 'Switzerland', 'Denmark', 'Unknown', 'Unknown', 'Poland'],
+    'Size': ['Large', 'Small', 'Large', 'Large', 'Large', 'Large', 'Large', 'Large', 'Large', 'Large', 'Large', 'Large', 'Large', 'Large', 'Small', 'Small', 'Large', 'Large', 'Large', 'Large'],
+    'Value': [560000, 150000, 760000, 650000, 980000, 490000, 209000, 674000, 2470000, 1200000, 280000, 390000, 1500000, 765000, 65000, 34000, 38000, 980000, 2300000, 390000],
+    'Payment': ['Wire', 'Letter of credit', 'Escrow account', 'Letter of credit', 'Letter of credit', 'Letter of credit', 'Letter of credit', 'Letter of credit', 'Escrow account', 'Escrow account', 'Letter of credit', 'Letter of credit', 'Wire', 'Letter of credit', 'Letter of credit', 'Wire', 'Wire', 'Third-party', 'Third-party', 'Letter of credit'],
+    'Route': ['Land', 'Air', 'Air', 'Air', 'Air', 'Sea', 'Sea', 'Land', 'Sea', 'Sea', 'Air', 'Land', 'Sea', 'Air', 'Land', 'Land', 'Land', 'Air', 'Air', 'Land'],
+    'Documentation': ['Complete', 'Complete', 'Partial', 'Complete', 'Complete', 'Complete', 'Complete', 'Complete', 'Partial', 'Partial', 'Complete', 'Complete', 'Partial', 'Complete', 'Complete', 'Complete', 'Complete', 'Complete', 'Complete', 'Complete'],
+    'DD Compliance': ['Accepted', 'Accepted', 'Rejected', 'Accepted', 'Accepted', 'Conditions', 'Conditions', 'Accepted', 'Rejected', 'Rejected', 'Accepted', 'Accepted', 'Rejected', 'Conditions', 'Accepted', 'Accepted', 'Accepted', 'Conditions', 'Conditions', 'Accepted']
+}
+
+# New unseen cases
+new_data = {
+    'Sector': ['Defense', 'Sport'],
+    'Export': ['Explosives', 'Explosives'],
+    'Origin': ['Germany', 'Israel'],
+    'Destination': ['Singapore', 'Singapore'],
+    'End use': ['Unknown', 'Singapore'],
+    'Size': ['Large', 'Small'],
+    'Value': [480000, 480000],
+    'Payment': ['Escrow account', 'Letter of credit'],
+    'Route': ['Air', 'Land'],
+    'Documentation': ['Partial', 'Complete']
+}
+
+# Convert data to DataFrame
+df = pd.DataFrame(training_data)
+new_df = pd.DataFrame(new_data)
+
+# Encode categorical features using LabelEncoder
+le = LabelEncoder()
+for col in df.columns:
+    if df[col].dtype == 'object':
+        df[col] = le.fit_transform(df[col])
+        if col in new_df.columns:
+            new_df[col] = le.transform(new_df[col])
+
+# Print the encoded table for the training data
+print("\nEncoded Training Data:")
+print(df)
+
+# Print the encoded table for the new unseen cases
+print("\nEncoded New Unseen Cases:")
+print(new_df)
+
+# Separate features and target variable
+X = df.drop('DD Compliance', axis=1)
+y = df['DD Compliance']
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Initialize the Random Forest Classifier
+rf_classifier = RandomForestClassifier(random_state=42)
+
+# Train the model
+rf_classifier.fit(X_train, y_train)
+
+# Print the model's accuracy after training
+accuracy = accuracy_score(y_test, rf_classifier.predict(X_test))
+print(f"Model Accuracy: {accuracy}")
+
+# Predict on new unseen data
+new_predictions = rf_classifier.predict(new_df)
+
+# Interpret the predicted values
+new_df['Predicted DD Compliance'] = new_predictions
+print("\nPredictions for new unseen cases:")
+for index, row in new_df.iterrows():
+    predicted_compliance = 'Unknown'
+    if row['Predicted DD Compliance'] == 2:
+        predicted_compliance = 'Rejected'
+    elif row['Predicted DD Compliance'] == 1:
+        predicted_compliance = 'Conditions'
+    elif row['Predicted DD Compliance'] == 0:
+        predicted_compliance = 'Accepted'
+    print(f"Case {index}: Sector: {row['Sector']}, Predicted DD Compliance: {predicted_compliance}")
