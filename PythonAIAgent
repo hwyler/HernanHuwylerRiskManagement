@@ -1,0 +1,87 @@
+AI Agent Project for Risk Management
+
+As a building block for an AI Agent, this project demonstrates the use of the transformers library to analyze project data from the SAP PPM (Project and Portfolio Management) module, 
+specifically targeting the description field (PS_PSPID). 
+The aim is to identify critical risk scenarios and escalate them to appropriate compliance officers via email.
+
+Objective:
+
+The goal is to collect project data, generate risk scenarios using a pre-trained language model, and automatically email these risks to relevant stakeholders.
+
+Libraries Used
+
+    Transformers: Utilized for loading and interacting with the pre-trained GPT-Neo model to generate risk scenarios.
+    smtplib and email.mime.text: Used for sending risk scenario emails to designated compliance officers.
+
+Developed by
+
+Prof. Hernan Huwyler, MBA, CPA
+Executive Director, IE Business School
+Keywords
+
+Risk, Compliance, AI Agent, SAP Data 
+"""
+
+# Step 1: Install the transformers library
+!pip install transformers --quiet
+
+# Step 2: Import necessary libraries
+from transformers import pipeline
+
+# Step 3: Load a pre-trained model for text generation
+# Using the EleutherAI/gpt-neo-2.7B model for better performance
+model_name = "EleutherAI/gpt-neo-2.7B"
+generator = pipeline('text-generation', model=model_name)
+
+# Step 4: Define the project details
+project_details = (
+    "Our goal is to create a web application that analyzes SAP data to recommend optimal inventory levels "
+    "and suggest the best suppliers. This aims to improve inventory management, reduce costs, and enhance "
+    "supplier performance. The application will be used in our supply chain management department. It will help "
+    "the procurement team optimize inventory and supplier selection with data-driven insights. In the first month, "
+    "we will gather requirements by meeting with stakeholders and identifying key SAP data points. In the second "
+    "and third months, we will design the application architecture, plan SAP integration, and outline optimization algorithms."
+)
+
+# Step 5: Create the prompt for the model
+prompt = (
+    "As an expert risk manager, analyze the following project description and identify the top 5 most critical risk scenarios. "
+    "Provide a list of specific risks that could impact the project's success, formatted as bullet points. "
+    "Do not summarize the project; focus on generating clear, concise risk statements. \n\n"
+    f"Project Description: {project_details}\n\n"
+    "Top 5 Critical Risk Scenarios:\n"
+)
+
+# Step 6: Generate the risk scenarios
+response = generator(prompt, max_length=300, num_return_sequences=1, do_sample=True, top_k=50, top_p=0.95)
+
+# Step 7: Print the output
+output_text = response[0]['generated_text']
+
+# Extract and print only the relevant portion that contains the risk scenarios
+output_start = output_text.find("Top 5 Critical Risk Scenarios:") + len("Top 5 Critical Risk Scenarios:")
+print(output_text[output_start:].strip())
+
+
+"""
+
+# Step 8: Email the risk scenarios
+import smtplib
+from email.mime.text import MIMEText
+
+email_dict = {
+    "compliance": "ComplianceOfficer@Comp.com",
+    "legal": "ComplianceOfficer@Comp.com",
+    "contractual": "ComplianceOfficer@Comp.com",
+    "requirements": "ComplianceOfficer@Comp.com",
+    "obligations": "ComplianceOfficer@Comp.com",
+    "systems": "CISO@Comp.com",
+    "cyber": "CISO@Comp.com",
+    "attacks": "CISO@Comp.com",
+    "privacy": "DPO@Comp.com",
+    "personal data": "DPO@Comp.com"
+}
+
+
+"""
+
