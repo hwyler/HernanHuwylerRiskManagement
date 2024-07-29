@@ -1,0 +1,173 @@
+"""
+Quantifying Risks using Multiple Linear Regression Model Repository Overview
+
+This repository provides a Python implementation of a Multiple Linear Regression model for estimating compensation risks. The model utilizes a Monte Carlo simulation to quantify risk using convolution on minimum and maximum losses in a lognormal distribution and probabilities in a Poisson distribution.
+
+Usage
+
+To use the model, simply create an instance of the RiskModel class, passing in the desired parameters:
+
+    simulations: The number of simulations to run.
+    lower: The lower bound of the loss distribution.
+    upper: The upper bound of the loss distribution.
+    confidence_level: The confidence level for the simulation.
+    events: The number of events to simulate.
+    reserve: The reserve percentage.
+
+Model Methods
+
+The RiskModel class provides several methods for analyzing and visualizing the results:
+
+    summary(): Prints a summary of the simulation results, including mean loss, median loss, standard deviation of loss, value at risk, and conditional value at risk.
+    plot_loss_exceedance_curve(): Plots the loss exceedance curve.
+    plot_loss_distribution(): Plots the total loss distribution.
+    plot_heatmap(): Plots a correlation heatmap between loss, probability, and total loss.
+    plot_scatter(): Plots a scatter plot of number of events vs total loss.
+
+Code Organization
+
+The code is organized into the following sections:
+
+    risk_model.py: Contains the RiskModel class.
+    README.md: Provides an overview of the repository and usage instructions.
+
+Commit Messages
+
+Commit messages should follow the standard format:
+
+[type]([scope]): [subject]
+
+    type: One of feat, fix, docs, style, refactor, or perf.
+    scope: Optional, specifies the scope of the change.
+    subject: A brief description of the change.
+
+API Documentation
+
+API documentation is provided using docstrings and follows the Google Python Style Guide.
+
+License
+
+This repository is licensed under the MIT License. See LICENSE for details.
+
+Acknowledgments
+
+This repository was developed by Prof. Hernan Huwyler MBA CPA, Executive Director, IE Business School.
+Keywords
+
+Risk, Compliance, Quantitative Risks, Modelling, Regression, Convolution, Monte Carlo Simulation, Confidence Interval.
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import lognorm, poisson, norm
+import seaborn as sns
+import pandas as pd
+from tqdm import tqdm
+
+class RiskModel:
+    def __init__(self, simulations, lower, upper, confidence_level, events, reserve):
+        self.simulations = simulations
+        self.lower = lower
+        self.upper = upper
+        self.confidence_level = confidence_level
+        self.events = events
+        self.reserve = reserve
+        np.random.seed(123)
+        
+        self.calculate_parameters()
+        self.generate_distributions()
+        self.combine_distributions()
+        self.calculate_metrics()
+
+    def calculate_parameters(self):
+        error = (1 - self.confidence_level) / 2
+        self.lowerq = lognorm.ppf(error, s=np.log(self.upper / self.lower))
+        self.upperq = lognorm.ppf(1 - error, s=np.log(self.upper / self.lower))
+        self.true_mean_log = (np.log(self.lower) + np.log(self.upper)) / 2
+        self.true_sd_log = (np.log(self.upper) - np.log(self.lower)) / (2 * norm.ppf(0.9))
+
+    def generate_distributions(self):
+        self.loss = lognorm.rvs(s=self.true_sd_log, scale=np.exp(self.true_mean_log), size=self.simulations)
+        self.prob = poisson.rvs(self.events, size=self.simulations)
+
+    def combine_distributions(self):
+        self.combined_distribution = [np.convolve(self.prob[i], self.loss[i], mode='full') for i in tqdm(range(self.simulations), desc="Combining distributions")]
+        self.total_loss = np.array([np.sum(self.combined_distribution[i]) for i in range(self.simulations)])
+
+    def calculate_metrics(self):
+        self.mean_loss = np.mean(self.total_loss)
+        self.median_loss = np.median(self.total_loss)
+        self.std_loss = np.std(self.total_loss)
+        self.var = np.percentile(self.total_loss, 95)
+        self.cvar = np.mean(self.total_loss[self.total_loss > self.var])
+        self.loss_at_reserve = np.percentile(self.total_loss, self.reserve * 100)
+        self.percentiles = {p: np.percentile(self.total_loss, p) for p in [10, 20, 30, 40, 50, 60, 70, 80, 90, 99]}
+
+    def plot_loss_exceedance_curve(self):
+        number_sequence = np.arange(0.01, 1.001, 0.001)
+        y = [np.percentile(self.total_loss, i * 100) for i in number_sequence]
+        plt.figure(figsize=(10, 6))
+        plt.plot(number_sequence, y, marker='o')
+        plt.xlabel('Percentile')
+        plt.ylabel('Loss')
+        plt.title('Loss Exceedance Curve')
+        plt.grid(True)
+        plt.show()
+
+
+    def plot_loss_distribution(self):
+        plt.figure(figsize=(10, 6))
+        sns.histplot(self.total_loss, kde=True)
+        plt.axvline(self.mean_loss, color='r', linestyle='--', label=f'Mean: {self.mean_loss:.2f}')
+        plt.axvline(self.var, color='g', linestyle='--', label=f'VaR (95%): {self.var:.2f}')
+        plt.axvline(self.cvar, color='y', linestyle='--', label=f'CVaR (95%): {self.cvar:.2f}')
+        plt.title('Total Loss Distribution')
+        plt.xlabel('Loss')
+        plt.ylabel('Density')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+    def plot_heatmap(self):
+        corr_matrix = np.corrcoef([self.loss, self.prob, self.total_loss])
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', 
+                    xticklabels=['Loss', 'Probability', 'Total Loss'],
+                    yticklabels=['Loss', 'Probability', 'Total Loss'])
+        plt.title('Correlation Heatmap')
+        plt.show()
+
+    def plot_scatter(self):
+        plt.figure(figsize=(10, 6))
+        plt.scatter(self.prob, self.total_loss, alpha=0.5)
+        plt.xlabel('Number of Events')
+        plt.ylabel('Total Loss')
+        plt.title('Scatter Plot: Number of Events vs Total Loss')
+        plt.grid(True)
+        plt.show()
+
+    def summary(self):
+        print(f"Mean Loss: {self.mean_loss:.2f}")
+        print(f"Median Loss: {self.median_loss:.2f}")
+        print(f"Standard Deviation of Loss: {self.std_loss:.2f}")
+        print(f"Value at Risk (95%): {self.var:.2f}")
+        print(f"Conditional Value at Risk (95%): {self.cvar:.2f}")
+        print(f"{self.reserve * 100}th Percentile Loss: {self.loss_at_reserve:.2f}")
+        print("\nPercentiles:")
+        for p, value in self.percentiles.items():
+            print(f"P({p}): {value:.2f}")
+
+# Usage
+model = RiskModel(
+    simulations=100000,
+    lower=1000,
+    upper=2000,
+    confidence_level=0.8,
+    events=4,
+    reserve=0.75
+)
+model.summary()
+model.plot_loss_exceedance_curve()
+model.plot_loss_distribution()
+model.plot_heatmap()
+model.plot_scatter()
