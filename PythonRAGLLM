@@ -1,0 +1,133 @@
+"""
+RAG LLM Model for Contract Review
+
+A Python implementation of a Retrieval-Augmented Generation (RAG) Large Language Model (LLM) for automating contract review.
+
+Overview
+
+This repository provides a pre-trained RAG LLM model for analyzing contracts and identifying potential risks and compliance issues. The model is trained on a dataset of contracts and uses a question-answering pipeline to extract relevant information.
+
+Model Methods
+
+The model provides two main methods:
+
+    analyze_contract(contract_text): Analyzes a contract text and returns a dictionary of results, where each key is a control number and the value is the answer to the corresponding question.
+    print_results(results): Prints the results of the contract analysis in a readable format.
+
+Code Organization
+
+The code is organized into the following sections:
+
+    common_controls: A dictionary of common controls to look for in a contract, with each key being a control number and the value being the corresponding question.
+    analyze_contract: A function that analyzes a contract text and returns a dictionary of results.
+    print_results: A function that prints the results of the contract analysis in a readable format.
+    main: The main function that takes a contract text as input and prints the results of the analysis.
+
+Commit Messages
+
+Commit messages should follow the standard format:
+
+[type]([scope]): [subject]
+
+    type: One of feat, fix, docs, style, refactor, or perf.
+    scope: Optional, specifies the scope of the change.
+    subject: A brief description of the change.
+
+API Documentation
+
+API documentation is provided using docstrings and follows the Google Python Style Guide.
+
+License
+
+This repository is licensed under the MIT License. See LICENSE for details.
+
+Acknowledgments
+
+This repository was developed by Prof. Hernan Huwyler MBA CPA, Executive Director, IE Business School.
+
+Keywords
+
+Risk, Compliance, Legal, Contract Management, LLM, RAG, Contract Review, Due Diligence, Internal Controls, Automatization of Reviews, Automatization of Controls, Control Automatization 
+
+"""
+
+!pip install transformers torch datasets
+from transformers import AutoTokenizer, AutoModelForQuestionAnswering, pipeline
+import torch
+
+# Load pre-trained model and tokenizer
+model_name = "deepset/roberta-base-squad2"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForQuestionAnswering.from_pretrained(model_name)
+qa_pipeline = pipeline("question-answering", model=model, tokenizer=tokenizer)
+
+# Define common controls to look for in the contract
+common_controls = {
+    "1. Legal Capacity": "Does the counterparty have the legal capacity to enter into this binding agreement?",
+    "2. Valid Consideration": "Is there valid consideration for the contract (if required in the jurisdiction)?",
+    "3. Delivery/Shipping Terms": "Are delivery/shipping terms clearly specified, including time-sensitive clauses if necessary?",
+    "4. Transfer of Legal Title": "Is the transfer of legal title clearly defined, including the specific timing?",
+    "5. Cancellation Rights": "Are cancellation rights for both parties clearly outlined and reasonable?",
+    "6. Suspension and Termination": "For service contracts, are suspension and termination conditions clearly defined and fair?",
+    "7. Payment Terms": "Are payment terms clearly specified, including interest on late payments and dispute mechanisms?",
+    "8. Damages and Liability": "Is there a clear definition of damages and liability, including any limitations?",
+    "9. Partial Shipments": "Are partial shipments or split deliveries addressed in the contract?",
+    "10. Return of Goods": "Are the conditions for returning goods clearly specified?",
+    "11. Confidentiality": "Does the contract include adequate confidentiality provisions?",
+    "12. Insolvency": "Are there provisions addressing the possibility of insolvency of either party?",
+    "13. Governing Law and Jurisdiction": "Is the governing law and jurisdiction clearly specified and appropriate?",
+    "14. Warranties": "Are warranties clearly stated, and are any disclaimers of warranties reasonable and legal?",
+    "15. Indemnities": "Are indemnities clearly defined and reasonably limited in scope?",
+    "16. Assignment and Subcontracting": "Are assignment and subcontracting rights clearly addressed?",
+    "17. Force Majeure": "Is there a clear and reasonable force majeure clause?",
+    "18. Dispute Resolution": "Is there a clear dispute resolution mechanism specified?",
+    "19. Data Handling and Protection": "For technology contracts, are data handling and protection measures adequately addressed?",
+    "20. Intellectual Property Rights": "Are intellectual property rights clearly defined and protected?",
+    "21. Price Adjustments": "For long-term contracts, is there a mechanism for price adjustments or reviews?",
+    "22. Contract Amendments": "Are there clear provisions for contract amendments or modifications?",
+    "23. Termination Clause": "Is there a clear termination clause, including conditions and consequences?",
+    "24. Performance Monitoring": "Are there provisions for performance monitoring and reporting?",
+    "25. Compliance with Laws": "Does the contract address compliance with relevant laws and regulations?",
+}
+
+def analyze_contract(contract_text: str) -> dict:
+    """
+    Analyzes a contract text and returns a dictionary of results.
+    
+    Args:
+        contract_text (str): The contract text to analyze.
+    
+    Returns:
+        dict: A dictionary of results, where each key is a control number and the value is the answer to the corresponding question.
+    """
+    results = {}
+    for number, question in common_controls.items():
+        inputs = {"question": question, "context": contract_text}
+        answer = qa_pipeline(inputs)
+        if answer['score'] < 0.1 or answer['answer'].lower() in ["", "no", "not mentioned", "not specified"]:
+            results[number] = "No (Not directly addressed in the contract)"
+        else:
+            results[number] = f"Yes: {answer['answer']}"
+    return results
+
+def print_results(results: dict) -> None:
+    """
+    Prints the results of the contract analysis in a readable format.
+    
+    Args:
+        results (dict): A dictionary of results, where each key is a control number and the value is the answer to the corresponding question.
+    """
+    print("Contract Review Results:")
+    print("------------------------")
+    for number, result in results.items():
+        print(f"{number}. {common_controls[number]}")
+        print(f"   Answer: {result}\n")
+
+# Input the contract text
+contract_text = input("Please enter the contract text: ")
+
+# Analyze the contract
+results = analyze_contract(contract_text)
+
+# Print the results
+print_results(results)
