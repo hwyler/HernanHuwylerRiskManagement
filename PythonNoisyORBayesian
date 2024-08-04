@@ -277,10 +277,4 @@ print(f"   - Bayesian Network: {expected_attacks_bn:.2f}")
 print("3. The most impactful factors (in order):")
 for factor, impact in sorted(impacts.items(), key=lambda x: x[1], reverse=True):
     print(f"   - {factor}: {impact:.4f}")
-print("4. Recommendations:")
-print("   - Focus on improving network bandwidth and incident response capabilities")
-print("   - Regularly patch vulnerabilities and implement effective rate limiting")
-print("5. Limitations of this analysis:")
-print("   - Assumes independence between factors (which may not be true in reality)")
-print("   - Based on estimated probabilities; real-world data would improve accuracy")
-print("   - Does not account for potential interactions between factors")
+
