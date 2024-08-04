@@ -1,4 +1,4 @@
-""
+"""
 Quantifying Cyber Security Risks: A Noisy-OR and Bayesian Network Approach
 
 This repository provides a Python implementation of a model to predict the likelihood of successful Denial of Service (DoS) attacks on a system. 
@@ -62,7 +62,7 @@ Keywords
 
 Risk Modeling, Cyber Security, IT Risk, Quantitative Risk Analysis, Noisy-OR, Bayesian Networks, DoS Attacks, Cyber risk quantification
 
-""
+"""
 
 !pip install pgmpy matplotlib scipy numpy
 
