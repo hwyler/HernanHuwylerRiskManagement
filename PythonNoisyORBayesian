@@ -1,0 +1,285 @@
+""
+Quantifying Cyber Security Risks: A Noisy-OR and Bayesian Network Approach
+
+This repository provides a Python implementation of a model to predict the likelihood of successful Denial of Service (DoS) attacks on a system. 
+The model considers four main risk factors: unpatched vulnerabilities, low network bandwidth, ineffective rate limiting, and poor incident response.
+
+Key Features
+
+    Noisy-OR Model (conditional probability): A simple, probabilistic model that calculates the likelihood of a successful DoS attack based on the presence of one or more risk factors.
+    Bayesian Network Model: A more complex, probabilistic model that uses a graphical representation of the relationships between the risk factors to calculate the likelihood of a successful DoS attack.
+    Sensitivity Analysis: A method to analyze how changes in the probabilities of each risk factor affect the overall likelihood of a successful DoS attack.
+    Impact Analysis: A method to calculate the impact of each risk factor on the likelihood of a successful DoS attack.
+
+Usage
+
+To use the model, simply create an instance of the RiskModel class, passing in the desired parameters:
+
+    Probability of annual occurrence of each risk factor
+    Expected number of attacks (e.g., 20 attacks a year under a Poisson distribution)
+
+Model Methods
+
+The RiskModel class provides several methods for analyzing and visualizing the results:
+
+    summary(): Prints a summary of the results, including the likelihood of a successful DoS attack and the expected number of successful attacks per year.
+    plot_results(): Plots the distribution of the number of attacks and the likelihood of a successful DoS attack.
+
+Code Organization
+
+The code is organized into the following sections:
+
+    risk_model.py: Contains the RiskModel class and its methods.
+    utils.py: Contains utility functions for the model, such as the Noisy-OR and Bayesian Network models.
+    README.md: Provides an overview of the repository and usage instructions.
+
+Commit Messages
+
+Commit messages should follow the standard format:
+
+[type]([scope]): [subject]
+
+    type: One of feat, fix, docs, style, refactor, or perf.
+    scope: Optional, specifies the scope of the change.
+    subject: A brief description of the change.
+
+API Documentation
+
+API documentation is provided using docstrings and follows the Google Python Style Guide.
+
+License
+
+This repository is licensed under the MIT License. See LICENSE for details.
+
+Keywords
+
+Risk, Cyber Security, IT Risk, Quantitative Risks, Modelling
+
+Acknowledgments
+
+This repository was developed by Prof. Hernan Huwyler MBA CPA, Executive Director, IE Business School.
+Keywords
+
+Risk Modeling, Cyber Security, IT Risk, Quantitative Risk Analysis, Noisy-OR, Bayesian Networks, DoS Attacks, Cyber risk quantification
+
+"""
+!pip install pgmpy matplotlib scipy numpy
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import poisson, binom
+from pgmpy.models import BayesianNetwork
+from pgmpy.factors.discrete import TabularCPD
+from pgmpy.sampling import BayesianModelSampling
+
+# Define the dependencies and their probabilities
+dependencies = {
+    'unpatched_vulnerabilities': 0.05,
+    'low_network_bandwidth': 0.1,
+    'ineffective_rate_limiting': 0.04,
+    'poor_incident_response': 0.1
+}
+
+# Define the Noisy-OR model
+def noisy_or(dependencies):
+    probs = [dependencies[dep] for dep in dependencies]
+    prob_at_least_one = 1 - np.prod([1 - p for p in probs])
+    return prob_at_least_one
+
+# Calculate the probability of a successful DoS attack for a single attempt
+prob_single_attack = noisy_or(dependencies)
+
+# Generate number of attacks for a year (Poisson distribution with mean 40)
+num_years = 10000
+num_attacks = poisson.rvs(mu=20, size=num_years)
+
+# Calculate probabilities for different numbers of successful attacks
+def prob_n_or_more_attacks(n, num_attacks, prob_single_attack):
+    return np.mean([1 - binom.cdf(n-1, attacks, prob_single_attack) for attacks in num_attacks])
+
+print("Probabilities using Noisy-OR model:")
+for n in range(1, 6):
+    prob = prob_n_or_more_attacks(n, num_attacks, prob_single_attack)
+    print(f"The average probability of at least {n} successful DoS attack(s) in a year is: {prob:.2%}")
+
+# Bayesian Network
+model = BayesianNetwork([('unpatched_vulnerabilities', 'attack'),
+                         ('low_network_bandwidth', 'attack'),
+                         ('ineffective_rate_limiting', 'attack'),
+                         ('poor_incident_response', 'attack')])
+
+# Define CPDs for each node
+cpd_unpatched = TabularCPD(variable='unpatched_vulnerabilities', variable_card=2, values=[[0.95], [0.05]])
+cpd_bandwidth = TabularCPD(variable='low_network_bandwidth', variable_card=2, values=[[0.5], [0.5]])
+cpd_rate_limiting = TabularCPD(variable='ineffective_rate_limiting', variable_card=2, values=[[0.96], [0.04]])
+cpd_incident_response = TabularCPD(variable='poor_incident_response', variable_card=2, values=[[0.7], [0.3]])
+
+# Define CPD for the attack node using Noisy-OR
+def noisy_or_cpd(n_variables):
+    n_rows = 2 ** n_variables
+    table = np.zeros((2, n_rows))
+    for i in range(n_rows):
+        binary = format(i, f'0{n_variables}b')
+        prob = 1
+        for j, bit in enumerate(binary):
+            if bit == '1':
+                prob *= dependencies[list(dependencies.keys())[j]]
+        table[0, i] = 1 - prob
+        table[1, i] = prob
+    return table
+
+cpd_attack = TabularCPD(variable='attack', variable_card=2,
+                        values=noisy_or_cpd(len(dependencies)),
+                        evidence=list(dependencies.keys()),
+                        evidence_card=[2] * len(dependencies))
+
+model.add_cpds(cpd_unpatched, cpd_bandwidth, cpd_rate_limiting, cpd_incident_response, cpd_attack)
+
+# Verify the model
+assert model.check_model()
+
+# Generate some data
+inference = BayesianModelSampling(model)
+data = inference.forward_sample(size=num_years)
+
+# Calculate probabilities from sampled data
+prob_successful_attack_bn = data['attack'].mean()
+
+print("\nProbabilities using Bayesian Network:")
+for n in range(1, 6):
+    prob = prob_n_or_more_attacks(n, num_attacks, prob_successful_attack_bn)
+    print(f"The average probability of at least {n} successful DoS attack(s) in a year is: {prob:.2%}")
+
+# Compare Noisy-OR and Bayesian Network results
+print("\nComparison of Noisy-OR and Bayesian Network results:")
+print(f"Probability of a single successful attack (Noisy-OR): {prob_single_attack:.2%}")
+print(f"Probability of a single successful attack (Bayesian Network): {prob_successful_attack_bn:.2%}")
+
+# Plotting
+plt.figure(figsize=(12, 8))
+
+# Plot 1: Distribution of number of attacks
+plt.subplot(2, 2, 1)
+plt.hist(num_attacks, bins=30, edgecolor='black')
+plt.title('Distribution of Number of Attacks per Year')
+plt.xlabel('Number of Attacks')
+plt.ylabel('Frequency')
+
+# Plot 2: Noisy-OR model visualization
+plt.subplot(2, 2, 2)
+dependencies_sorted = sorted(dependencies.items(), key=lambda x: x[1], reverse=True)
+names = [dep[0] for dep in dependencies_sorted]
+values = [dep[1] for dep in dependencies_sorted]
+plt.barh(names, values)
+plt.title('Noisy-OR Model: Probability of Each Dependency')
+plt.xlabel('Probability')
+
+# Plot 3: Comparison of Noisy-OR and Bayesian Network probabilities
+plt.subplot(2, 2, 3)
+n_values = list(range(1, 6))
+noisy_or_probs = [prob_n_or_more_attacks(n, num_attacks, prob_single_attack) for n in n_values]
+bn_probs = [prob_n_or_more_attacks(n, num_attacks, prob_successful_attack_bn) for n in n_values]
+plt.plot(n_values, noisy_or_probs, 'bo-', label='Noisy-OR')
+plt.plot(n_values, bn_probs, 'ro-', label='Bayesian Network')
+plt.title('Probability of N or More Successful Attacks')
+plt.xlabel('Number of Successful Attacks (N)')
+plt.ylabel('Probability')
+plt.legend()
+
+# Plot 4: Distribution of sampled successful attacks (Bayesian Network)
+plt.subplot(2, 2, 4)
+plt.hist(data['attack'], bins=2, edgecolor='black', rwidth=0.8)
+plt.title('Distribution of Sampled Successful Attacks (BN)')
+plt.xlabel('Attack Outcome (0 = No Attack, 1 = Attack)')
+plt.ylabel('Frequency')
+plt.xticks([0, 1])
+
+plt.tight_layout()
+plt.show()
+
+# Calculate expected number of successful attacks per year
+expected_attacks_noisy_or = np.mean(num_attacks * prob_single_attack)
+expected_attacks_bn = np.mean(num_attacks * prob_successful_attack_bn)
+
+print(f"\nExpected number of successful attacks per year (Noisy-OR): {expected_attacks_noisy_or:.2f}")
+print(f"Expected number of successful attacks per year (Bayesian Network): {expected_attacks_bn:.2f}")
+
+# Sensitivity analysis
+def sensitivity_analysis(parameter, range_multiplier=0.5):
+    baseline = dependencies[parameter]
+    sensitivity_range = np.linspace(baseline * (1 - range_multiplier), baseline * (1 + range_multiplier), 11)
+    results = []
+    
+    for value in sensitivity_range:
+        dependencies_copy = dependencies.copy()
+        dependencies_copy[parameter] = value
+        prob = noisy_or(dependencies_copy)
+        results.append(prob)
+    
+    return sensitivity_range, results
+
+# Perform sensitivity analysis for each parameter
+parameters = list(dependencies.keys())
+plt.figure(figsize=(12, 8))
+
+for i, param in enumerate(parameters, 1):
+    sensitivity_range, results = sensitivity_analysis(param)
+    
+    plt.subplot(2, 2, i)
+    plt.plot(sensitivity_range, results, 'bo-')
+    plt.title(f'Sensitivity Analysis: {param}')
+    plt.xlabel(f'{param} Probability')
+    plt.ylabel('Probability of Successful Attack')
+    plt.grid(True)
+
+plt.tight_layout()
+plt.show()
+
+# Calculate the impact of each factor
+def calculate_impact(dependencies):
+    base_prob = noisy_or(dependencies)
+    impacts = {}
+    
+    for factor in dependencies:
+        temp_deps = dependencies.copy()
+        temp_deps[factor] = 0
+        prob_without_factor = noisy_or(temp_deps)
+        impact = base_prob - prob_without_factor
+        impacts[factor] = impact
+    
+    return impacts
+
+impacts = calculate_impact(dependencies)
+
+# Plot impact of each factor
+plt.figure(figsize=(10, 6))
+plt.bar(impacts.keys(), impacts.values())
+plt.title('Impact of Each Factor on Attack Probability')
+plt.xlabel('Factors')
+plt.ylabel('Impact on Probability')
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+
+print("\nImpact of each factor on attack probability:")
+for factor, impact in sorted(impacts.items(), key=lambda x: x[1], reverse=True):
+    print(f"{factor}: {impact:.4f}")
+
+# Final summary
+print("\nFinal Summary:")
+print(f"1. The probability of a successful DoS attack on a single attempt:")
+print(f"   - Noisy-OR model: {prob_single_attack:.2%}")
+print(f"   - Bayesian Network: {prob_successful_attack_bn:.2%}")
+print(f"2. Expected number of successful attacks per year:")
+print(f"   - Noisy-OR model: {expected_attacks_noisy_or:.2f}")
+print(f"   - Bayesian Network: {expected_attacks_bn:.2f}")
+print("3. The most impactful factors (in order):")
+for factor, impact in sorted(impacts.items(), key=lambda x: x[1], reverse=True):
+    print(f"   - {factor}: {impact:.4f}")
+print("4. Recommendations:")
+print("   - Focus on improving network bandwidth and incident response capabilities")
+print("   - Regularly patch vulnerabilities and implement effective rate limiting")
+print("5. Limitations of this analysis:")
+print("   - Assumes independence between factors (which may not be true in reality)")
+print("   - Based on estimated probabilities; real-world data would improve accuracy")
+print("   - Does not account for potential interactions between factors")
