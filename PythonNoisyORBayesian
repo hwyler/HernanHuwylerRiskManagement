@@ -111,9 +111,9 @@ model = BayesianNetwork([('unpatched_vulnerabilities', 'attack'),
 
 # Define CPDs for each node
 cpd_unpatched = TabularCPD(variable='unpatched_vulnerabilities', variable_card=2, values=[[0.95], [0.05]])
-cpd_bandwidth = TabularCPD(variable='low_network_bandwidth', variable_card=2, values=[[0.5], [0.5]])
+cpd_bandwidth = TabularCPD(variable='low_network_bandwidth', variable_card=2, values=[[0.9], [0.1]])
 cpd_rate_limiting = TabularCPD(variable='ineffective_rate_limiting', variable_card=2, values=[[0.96], [0.04]])
-cpd_incident_response = TabularCPD(variable='poor_incident_response', variable_card=2, values=[[0.7], [0.3]])
+cpd_incident_response = TabularCPD(variable='poor_incident_response', variable_card=2, values=[[0.9], [0.1]])
 
 # Define CPD for the attack node using Noisy-OR
 def noisy_or_cpd(n_variables):
