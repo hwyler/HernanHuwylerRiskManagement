@@ -90,7 +90,7 @@ def noisy_or(dependencies):
 prob_single_attack = noisy_or(dependencies)
 
 # Generate number of attacks for a year (Poisson distribution with mean 40)
-num_years = 10000
+num_years = 100000
 num_attacks = poisson.rvs(mu=20, size=num_years)
 
 # Calculate probabilities for different numbers of successful attacks
