@@ -1,0 +1,55 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Provided data
+data = [
+    [1, 1, 0, 0, 0, 0, 0, 0, 65],
+    [1, 0, 0, 1, 0, 0, 0, 1, 12],
+    [0, 0, 0, 0, 0, 1, 0, 1, 23],
+    [0, 1, 1, 1, 0, 0, 1, 0, 48],
+    [0, 0, 0, 0, 0, 0, 1, 1, 46],
+    [1, 1, 0, 1, 0, 0, 0, 1, 75],
+    [1, 1, 0, 1, 0, 0, 0, 1, 95]
+]
+
+# Create DataFrame
+df = pd.DataFrame(data, columns=["Incorrect due date", "Incorrect payment terms", "Missed payment", "Incorrect invoice", "Incorrect tax data", "No released proposal", "Missed payment file", "Incorrect approver", "Days delayed"])
+
+# Separate risk factors from output variable
+risk_factors = df.iloc[:, :-1]
+output_variable = df.iloc[:, -1]
+
+# Calculate covariance matrix for risk factors
+covariance_matrix = risk_factors.cov()
+
+# Plot covariance matrix as a heatmap
+plt.figure(figsize=(10, 8))
+sns.heatmap(covariance_matrix, annot=True, cmap="YlGnBu")
+plt.title("Covariance Matrix for Risk Factors")
+plt.show()
+
+# Calculate covariance between risk factors and output variable
+covariances = risk_factors.apply(lambda x: x.cov(output_variable))
+
+# Print covariance values
+print("Covariances between Risk Factors and Days Delayed:")
+print(covariances)
+
+# Create bar plot to visualize covariances
+plt.figure(figsize=(10, 6))
+covariances.plot(kind="bar")
+plt.title("Covariances between Risk Factors and Days Delayed")
+plt.xlabel("Risk Factors")
+plt.ylabel("Covariance")
+plt.show()
+
+# Create scatter plots to visualize relationships
+for i, col in enumerate(risk_factors.columns):
+    plt.figure(figsize=(8, 6))
+    plt.scatter(risk_factors[col], output_variable)
+    plt.title(f"Relationship between {col} and Days Delayed")
+    plt.xlabel(col)
+    plt.ylabel("Days Delayed")
+    plt.show()
