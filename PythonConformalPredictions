@@ -1,0 +1,268 @@
+# ============================================================================
+# Credit Risk Assessment using Conformal Prediction
+# ============================================================================
+# 
+# Author: Prof. Hernan Huwyler, MBA CPA IE Law School Academic Director
+# 
+# MIT License
+# 
+# Copyright (c) 2023 Prof. Hernan Huwyler
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# 
+# Keywords: credit risk assessment, conformal prediction, machine learning, 
+#           Random Forest Classifier, feature scaling, nonconformist library
+# 
+# Description: This code implements a credit risk assessment model using 
+#              conformal prediction. The model is trained on a dataset of loan 
+#              applicants and predicts the probability of default based on their 
+#              income, FICO score, and savings.
+
+
+
+# Install necessary packages
+!pip install numpy pandas scikit-learn matplotlib nonconformist --quiet
+
+# Import libraries
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (
+    accuracy_score, confusion_matrix, classification_report,
+    roc_auc_score, roc_curve, precision_recall_curve, auc
+)
+from sklearn.preprocessing import StandardScaler
+from nonconformist.cp import IcpClassifier
+from nonconformist.nc import ClassifierNc, MarginErrFunc
+from nonconformist.base import ClassifierAdapter
+import matplotlib.pyplot as plt
+import warnings
+
+# Optionally, handle specific warnings
+# For example, to ignore convergence warnings from sklearn
+from sklearn.exceptions import ConvergenceWarning
+warnings.filterwarnings('ignore', category=ConvergenceWarning)
+
+# Prepare the dataset
+data = {
+    'Income': [
+        120708, 89636, 127400, 93723, 154693, 189375, 108455, 91119, 118664, 186895,
+        67247, 122624, 120237, 145294, 151475, 103634, 149706, 120366, 128868, 167604,
+        103057, 116629, 173285, 174505, 183406, 84447, 117074, 91191, 93182, 144341,
+        120367, 188707, 108394, 162637, 167871, 109915, 164534, 134803, 128647, 134456,
+        112214, 133519, 165515, 86705, 99098, 137565, 118119, 97688, 128489, 139191
+    ],
+    'FICO': [
+        584, 599, 628, 552, 657, 705, 581, 547, 629, 640,
+        560, 612, 641, 607, 642, 588, 623, 562, 576, 610,
+        602, 593, 689, 626, 655, 610, 580, 563, 591, 605,
+        622, 653, 591, 635, 668, 570, 614, 577, 615, 651,
+        543, 566, 695, 525, 611, 629, 574, 582, 588, 631
+    ],
+    'Saving': [
+        0.57, 0.37, 0.54, 0.45, 0.64, 0.67, 0.50, 0.43, 0.54, 0.68,
+        0.25, 0.57, 0.56, 0.62, 0.64, 0.50, 0.61, 0.53, 0.52, 0.62,
+        0.47, 0.54, 0.68, 0.64, 0.60, 0.39, 0.51, 0.37, 0.42, 0.59,
+        0.52, 0.67, 0.52, 0.60, 0.60, 0.46, 0.65, 0.52, 0.57, 0.61,
+        0.48, 0.60, 0.61, 0.33, 0.49, 0.58, 0.52, 0.44, 0.54, 0.57
+    ],
+    'Defaulted': [
+        0, 1, 0, 1, 0, 0, 0, 1, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+        0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 1, 0, 0, 0, 1, 0, 0
+    ]
+}
+
+df = pd.DataFrame(data)
+X = df[['Income', 'FICO', 'Saving']]
+y = df['Defaulted']
+
+# Split data into training, calibration, and test sets
+# 60% training, 20% calibration, 20% testing
+X_train_full, X_test, y_train_full, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=123, stratify=y
+)
+X_train, X_calib, y_train, y_calib = train_test_split(
+    X_train_full, y_train_full, test_size=0.25, random_state=123, stratify=y_train_full
+)  # 0.25 x 0.8 = 0.2
+
+# Feature scaling
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_calib_scaled = scaler.transform(X_calib)
+X_test_scaled = scaler.transform(X_test)
+
+# Initialize and train Random Forest with 50 estimators
+rf = RandomForestClassifier(n_estimators=50, random_state=123)
+rf.fit(X_train_scaled, y_train)
+
+# Wrap the Random Forest classifier for conformal prediction
+classifier = ClassifierAdapter(rf)
+nc = ClassifierNc(classifier, MarginErrFunc())
+icp = IcpClassifier(nc)
+
+# Fit the conformal predictor
+icp.fit(X_train_scaled, y_train)
+icp.calibrate(X_calib_scaled, y_calib)
+
+# Predict with conformal intervals on the test set
+# Each prediction is a set of possible classes
+prediction = icp.predict(X_test_scaled, significance=0.1)  # 90% confidence
+
+# Evaluate the base classifier on test set
+y_pred = rf.predict(X_test_scaled)
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Random Forest Model Accuracy on Test Data: {accuracy * 100:.2f}%\n")
+
+conf_matrix = confusion_matrix(y_test, y_pred)
+class_report = classification_report(y_test, y_pred)
+print("Confusion Matrix:")
+print(conf_matrix)
+print("\nClassification Report:")
+print(class_report)
+
+# Additional Metrics: AUC-ROC and Precision-Recall
+y_proba = rf.predict_proba(X_test_scaled)[:, 1]
+auc_roc = roc_auc_score(y_test, y_proba)
+print(f"AUC-ROC Score: {auc_roc:.4f}\n")
+
+# Plot ROC Curve
+fpr, tpr, thresholds = roc_curve(y_test, y_proba)
+plt.figure(figsize=(8, 6))
+plt.plot(fpr, tpr, label=f'AUC-ROC = {auc_roc:.4f}')
+plt.plot([0, 1], [0, 1], 'k--')  # Diagonal line
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('ROC Curve')
+plt.legend(loc='lower right')
+plt.grid(True)
+plt.show()
+
+# Precision-Recall Curve
+precision, recall, thresholds_pr = precision_recall_curve(y_test, y_proba)
+pr_auc = auc(recall, precision)
+print(f"Precision-Recall AUC: {pr_auc:.4f}\n")
+
+plt.figure(figsize=(8, 6))
+plt.plot(recall, precision, label=f'PR AUC = {pr_auc:.4f}')
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.title('Precision-Recall Curve')
+plt.legend(loc='upper right')
+plt.grid(True)
+plt.show()
+
+# Display prediction intervals
+print("\nPrediction intervals on the test set:")
+for i in range(len(X_test)):
+    input_features = X_test.iloc[i].values
+    actual = y_test.iloc[i]
+    pred = y_pred[i]
+    pred_interval = prediction[i]
+    print(f"Input: {input_features}, Actual: {actual}, Predicted: {pred}, Prediction Interval: {pred_interval}")
+
+# Feature Importances
+importances = rf.feature_importances_
+feature_names = X.columns
+indices = np.argsort(importances)[::-1]
+
+plt.figure(figsize=(8, 6))
+plt.title("Feature Importances")
+plt.bar(range(X.shape[1]), importances[indices], color='lightblue', align='center')
+plt.xticks(range(X.shape[1]), feature_names[indices])
+plt.xlabel("Features")
+plt.ylabel("Importance Score")
+plt.show()
+
+# Predict with conformal intervals for new applicants
+applicant_A = np.array([[63468, 582, 0.44]])
+applicant_B = np.array([[184707, 673, 0.69]])
+
+# Scale the applicant data
+applicant_A_scaled = scaler.transform(applicant_A)
+applicant_B_scaled = scaler.transform(applicant_B)
+
+# Get prediction intervals
+prediction_A = icp.predict(applicant_A_scaled, significance=0.1)
+prediction_B = icp.predict(applicant_B_scaled, significance=0.1)
+
+print("\nPrediction for Applicant A:")
+print(f"Input: {applicant_A}, Prediction Interval: {prediction_A[0]}")
+
+print("\nPrediction for Applicant B:")
+print(f"Input: {applicant_B}, Prediction Interval: {prediction_B[0]}")
+
+# Function to calculate probability of default based on prediction interval using predict_proba
+def calculate_probability_of_default_proba(model, scaler, applicant):
+    applicant_scaled = scaler.transform(applicant)
+    proba = model.predict_proba(applicant_scaled)[0][1]  # Probability of class '1'
+    return proba
+
+prob_default_A = calculate_probability_of_default_proba(rf, scaler, applicant_A)
+prob_default_B = calculate_probability_of_default_proba(rf, scaler, applicant_B)
+
+print(f"\nProbability of Default for Applicant A at 90% confidence: {prob_default_A * 100:.2f}%")
+print(f"Probability of Default for Applicant B at 90% confidence: {prob_default_B * 100:.2f}%")
+
+# Calculate coverage (certainty)
+def calculate_coverage(pred_intervals, true_labels):
+    covered = 0
+    for interval, true in zip(pred_intervals, true_labels):
+        if true in interval:
+            covered += 1
+    return covered / len(true_labels)
+
+coverage = calculate_coverage(prediction, y_test)
+print(f"\nCoverage (Certainty) of Classification: {coverage * 100:.2f}%")
+
+# Calculate probability of coverage
+def calculate_probability_of_coverage(pred_intervals):
+    single_class = 0
+    for interval in pred_intervals:
+        if len(interval) == 1:
+            single_class += 1
+    return single_class / len(pred_intervals)
+
+prob_coverage = calculate_probability_of_coverage(prediction)
+print(f"Probability of Single-Class Coverage: {prob_coverage * 100:.2f}%")
+
+# Plot Coverage
+labels = ['Covered', 'Not Covered']
+sizes = [coverage * 100, 100 - coverage * 100]
+colors = ['#4CAF50', '#FF5252']
+plt.figure(figsize=(6,6))
+plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=140)
+plt.title("Coverage of Conformal Predictions")
+plt.axis('equal')
+plt.show()
+
+# Plot Probability of Single-Class Coverage
+labels = ['Single-Class Predictions', 'Multi-Class Predictions']
+sizes = [prob_coverage * 100, 100 - prob_coverage * 100]
+colors = ['#2196F3', '#FFC107']
+plt.figure(figsize=(6,6))
+plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=140)
+plt.title("Probability of Single-Class Coverage")
+plt.axis('equal')
+plt.show()
+
+# Summary of Results
+print("\n--- Summary of Results ---")
+print(f"Random Forest Model Accuracy: {accuracy * 100:.2f}%")
+print(f"AUC-ROC Score: {auc_roc:.4f}")
+print(f"Precision-Recall AUC: {pr_auc:.4f}")
+print(f"Coverage (Certainty) of Classification: {coverage * 100:.2f}%")
+print(f"Probability of Single-Class Coverage: {prob_coverage * 100:.2f}%")
+print(f"Probability of Default for Applicant A at 90% confidence: {prob_default_A * 100:.2f}%")
+print(f"Probability of Default for Applicant B at 90% confidence: {prob_default_B * 100:.2f}%")
