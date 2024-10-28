@@ -1,0 +1,391 @@
+import pandas as pd
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+import io
+np.random.seed(123)
+
+# Load the data
+data = """
+date,client_name,account_to,amount,merchant_name,transaction_status
+10/29/2023,Clay Grahame,2046460,101937,Kemmer Littel,completed
+10/31/2023,Dougie McKilroe,679601,63802,Brown Zieme and Shields,completed
+11/1/2023,Doria Ashness,8235497,238185,Emmerich Kreiger,completed
+11/1/2023,Star Illem,48207710,268740,Stoltenberg LLC,completed
+11/2/2023,Hettie Redan,6856393,208778,Barrows Marvin,completed
+11/5/2023,Roddy Nesbeth,54599410,186907,O'Keefe Group,completed
+11/7/2023,Prentice Simyson,91894100,79282,Schuster Mertz,declined
+11/11/2023,Christean Cuningham,7774066,299074,Reilly and Sons,completed
+11/14/2023,Shirlene Ganny,98707890,28630,Feil Windler and Parisian,completed
+11/18/2023,Deeann Mungane,10960930,191709,Hoppe Hahn,completed
+11/19/2023,Elsy Earney,32177750,80630,Larson and Sons,completed
+11/24/2023,Mariejeanne Whightman,2845408,27951,Walker Ritchie,completed
+12/2/2023,Morton Woodbridge,31089250,172842,Haley Hoeger,completed
+12/2/2023,Griz Lammertz,09165050,281463,Ondricka Cummerata and Jakubowski,completed
+12/6/2023,Dusty Bradden,25053090,54100,Cremin Greenfelder,completed
+12/10/2023,Stormie Serrell,1690680,143922,Gislason Lebsack and Bergnaum,completed
+12/23/2023,Iorgo McCrorie,6283663,58869,Armstrong Maggio and Douglas,completed
+12/25/2023,Collen Albasini,30896650,286005,Gusikowski Satterfield,pending
+12/31/2023,Lin Hobben,3349210,37362,Torp Lindgren,completed
+1/1/2024,Obie Ende,1480801,17195,Willms VonRueden and Casper,completed
+1/2/2024,Osborne McDougle,5414707,227560,Kulas Farrell and Reichel,completed
+1/3/2024,Lannie Lucks,7125509,292277,Rohan LLC,completed
+1/4/2024,Desmond Buffey,33746810,126910,DuBuque McLaughlin,completed
+1/10/2024,Rod Shapero,47304780,73189,Ledner Kihn and Crist,completed
+1/11/2024,Derry Ovanesian,29876250,234083,Fahey Inc,completed
+1/12/2024,Dimitri Foley,3703192,22525,Aufderhar Group,pending
+1/16/2024,Diego Westwater,06313120,264120,Ullrich Shanahan and Labadie,completed
+1/17/2024,Tanner Liversidge,8971034,97071,Barton Olson,completed
+1/20/2024,Marianne Bywaters,9162898,7375,Hamill Corwin and Weimann,completed
+1/28/2024,Hamil Coulter,56596650,689987,Walter LLC,completed
+1/31/2024,Maiga Turnell,66313290,218261,Braun Group,completed
+10/29/2023,Clay Grahame,2046460,101937,Kemmer Littel,completed
+10/31/2023,Dougie McKilroe,679601,63802,Brown Zieme and Shields,completed
+11/1/2023,Doria Ashness,8235497,238185,Emmerich Kreiger,completed
+11/1/2023,Star Illem,48207710,268740,Stoltenberg LLC,completed
+11/2/2023,Hettie Redan,6856393,208778,Barrows Marvin,completed
+11/5/2023,Roddy Nesbeth,54599410,186907,O'Keefe Group,completed
+11/11/2023,Christean Cuningham,7774066,299074,Reilly and Sons,completed
+11/14/2023,Shirlene Ganny,98707890,28630,Feil Windler and Parisian,completed
+11/18/2023,Deeann Mungane,10960930,191709,Hoppe Hahn,completed
+11/19/2023,Elsy Earney,32177750,80630,Larson and Sons,completed
+11/24/2023,Mariejeanne Whightman,2845408,27951,Walker Ritchie,completed
+12/2/2023,Morton Woodbridge,31089250,172842,Haley Hoeger,completed
+12/2/2023,Griz Lammertz,09165050,281463,Ondricka Cummerata and Jakubowski,completed
+12/6/2023,Dusty Bradden,25053090,54100,Cremin Greenfelder,completed
+12/10/2023,Stormie Serrell,1690680,143922,Gislason Lebsack and Bergnaum,completed
+12/23/2023,Iorgo McCrorie,6283663,58869,Armstrong Maggio and Douglas,completed
+12/25/2023,Collen Albasini,30896650,286005,Gusikowski Satterfield,pending
+12/31/2023,Lin Hobben,3349210,37362,Torp Lindgren,completed
+1/1/2024,Obie Ende,1480801,17195,Willms VonRueden and Casper,completed
+1/2/2024,Osborne McDougle,5414707,227560,Kulas Farrell and Reichel,completed
+1/4/2024,Lannie Lucks,7125509,292277,Rohan LLC,completed
+1/4/2024,Desmond Buffey,33746810,126910,DuBuque McLaughlin,completed
+1/10/2024,Rod Shapero,47304780,73189,Ledner Kihn and Crist,completed
+1/11/2024,Derry Ovanesian,29876250,234083,Fahey Inc,completed
+1/12/2024,Dimitri Foley,3703192,22525,Aufderhar Group,pending
+1/16/2024,Diego Westwater,06313120,264120,Ullrich Shanahan and Labadie,completed
+1/17/2024,Tanner Liversidge,8971034,97071,Barton Olson,completed
+1/20/2024,Marianne Bywaters,9162898,7375,Hamill Corwin and Weimann,completed
+1/28/2024,Hamil Coulter,56596650,689987,Walter LLC,completed
+1/31/2024,Maiga Turnell,66313290,218261,Braun Group,completed
+2/6/2024,Cornall Ducket,93149870,127081,Schaden Armstrong,completed
+2/6/2024,Arv Acomb,68598350,133652,Becker Gleason,completed
+2/15/2024,Flore Hellen,4454944,245539,Waelchi Schoen,completed
+2/18/2024,Terrell Mullett,6129668,44311,Steuber LLC,declined
+2/18/2024,Louisa Rawlin,5752916,190825,Auer Hauck,completed
+2/21/2024,Husain Ackrill,5355610,140969,Bailey and Sons,completed
+2/24/2024,Shir Anthoine,36409290,57456,Daugherty Schamberger and Watsica,completed
+2/24/2024,Ariana Livesley,50738140,180653,Franecki Hackett and Stroman,pending
+2/27/2024,Kane Cheales,2124085,150313,Kohler Sauer and Feeney,completed
+2/29/2024,Allin Mant,5857723,151645,Hintz and Sons,declined
+3/2/2024,Lynnett Thirlwell,1527619,136481,Mertz Group,completed
+3/7/2024,Maddi Bute,8399061,34362,Beatty Reinger and Davis,completed
+3/12/2024,Poppy Greensitt,55110070,77600,Renner Gislason and Medhurst,completed
+3/15/2024,Liv Benninck,35692030,287133,McClure McGlynn and McDermott,completed
+3/18/2024,Aeriel Zanini,81717,72598,Toy Powlowski,pending
+3/18/2024,Birch Camellini,9988177,188018,Huels Pouros and Bailey,completed
+3/21/2024,Maddi Zelland,13784440,110858,Walter Hansen,completed
+3/31/2024,Gerty Hazzard,9768843,178090,Swainawski Frami and Christiansen,completed
+4/3/2024,Selinda Jaffray,38638950,91802,Leuschke Torphy and Padberg,completed
+4/6/2024,Gwen Fould,65611310,67251,Pouros Morissette and Breitenberg,completed
+4/7/2024,Madelina Rottery,7462233,68972,Larson Carroll and Beatty,completed
+4/7/2024,Lucina Meekins,99459560,262456,Cremin LLC,completed
+4/8/2024,Sianna Hurdis,34704750,106596,Hills Jerde and Gulgowski,completed
+4/8/2024,Ann Boote,96999860,209978,Hessel Group,completed
+4/8/2024,Ugo Willacot,18325990,130034,Kessler Borer and Baumbach,completed
+4/10/2024,Katharina McGown,136503,90465,Ledner and Sons,completed
+4/11/2024,Kimmie Heeks,5639860,106552,Flatley Group,completed
+4/13/2024,Fania Canacott,9250784,171330,Lemke Steuber and Dickinson,completed
+4/14/2024,Maribeth Eveque,6142844,228765,Mraz Bednar,pending
+4/15/2024,Obadias Yerrill,16115740,11749,Kuhn Inc,completed
+4/19/2024,Ailis Westley,8061539,192009,Gleichner Reilly and Romaguera,completed
+4/24/2024,Buffy Palffy,63959180,43555,Green Maggio,completed
+4/26/2024,Chelsea Robinette,12742810,960,Fay Luettgen and Schamberger,completed
+4/27/2024,Eulalie Romayne,45760540,193601,Strosin Kunze and Simonis,completed
+4/28/2024,Anne-marie Iiannone,74055340,131403,Jones and Sons,completed
+4/30/2024,Bartram Feehily,559944,579595,Berge Hamill and Reinger,declined
+5/1/2024,Farrah Higgoe,99393860,203343,Waters Koelpin,declined
+5/6/2024,Dyann Starkie,61189010,287406,White and Sons,completed
+5/7/2024,Melisandra Syers,67799670,241591,Kerluke Nitzsche and Koepp,completed
+5/9/2024,Marena Eldritt,04914210,298916,Hand Paucek,completed
+5/11/2024,Emmalynne Willbraham,01826640,247680,Abbott Frami and Boyle,completed
+5/14/2024,Carolan Chadderton,84987150,27228,Lynch Treutel and Moen,completed
+5/14/2024,Sarine Pattesall,7904028,209553,Bednar LLC,completed
+5/17/2024,Fifine Tomaello,8498087,76392,Hand Conn and Stark,completed
+5/18/2024,Ada Seivwright,6820225,265842,McLaughlin Roob and Goldner,completed
+5/19/2024,Anjanette Tyreman,17556200,146732,Roob Inc,pending
+5/24/2024,Gipsy Whittet,10982510,183955,Hirthe and Sons,declined
+5/26/2024,Hilde Kira,55778340,215295,Schamberger Greenholt and Conroy,completed
+5/26/2024,Mollee Pitkaithly,29009580,214085,Howe Roberts and Mitchell,completed
+5/31/2024,Gisele Pither,53311870,214957,Murazik Inc,completed
+6/4/2024,Bartram Feehily,559944,579595,Berge Hamill and Reinger,completed
+6/4/2024,Shalom Meadowcroft,79910960,260269,Bergnaum Volkman,completed
+6/8/2024,Adey Derrell,30576960,123753,Koelpin Group,completed
+6/9/2024,Ceciley Shires,02872760,259981,Powlowski Gerhold and Rau,declined
+6/9/2024,Yorgo Keelan,837985,263328,Schaden LLC,completed
+6/9/2024,Gan Moylan,82259090,144766,Metz LLC,completed
+6/11/2024,Codie Ourry,65678150,16405,Zieme Group,completed
+6/12/2024,Anetta Pincott,41241350,99895,Denesik Fisher and Reichel,completed
+6/13/2024,Aurie Songest,7295096,193022,Considine Littel and White,completed
+6/15/2024,Ase Morphet,08398090,57660,Mosciski Kunze,completed
+6/21/2024,Celestine Harverson,05807240,120833,Haley Block and Flatley,completed
+6/25/2024,Berry Vila,2757827,254476,Fay Leffler and Crona,declined
+6/26/2024,Pietrek Marsden,81124920,90899,Mosciski LLC,completed
+6/28/2024,Violante Suddards,3356066,293928,Parker Roberts,completed
+6/28/2024,Freeman Reeday,1383724,215451,Daugherty Metz and Heidenreich,completed
+7/2/2024,Torey McKiernan,25835530,185158,Turner Kuhic,completed
+7/6/2024,Paolina Hamshar,4508426,261413,Streich Dietrich,completed
+7/6/2024,Hilly Lindmark,42397450,291146,Keebler Kris and Leffler,completed
+7/7/2024,Cindie Pedrielli,149142,9217,Stanton Harvey and Schowalter,completed
+7/13/2024,Greg Disdel,92737980,269278,Abbott Beahan,completed
+7/14/2024,Dom Lehmann,94167050,156478,Johns Conroy and Watsica,completed
+7/14/2024,Cynde Di Nisco,275913,124822,Walker Group,completed
+7/15/2024,Margeaux Gummary,5186198,60477,Langosh Group,completed
+7/16/2024,Audrie Zincke,50544650,88001,Weissnat Kiehn,completed
+7/17/2024,Tabby Bardsley,40795350,13400,Boyer Inc,completed
+7/17/2024,Lester Croxley,88509100,246211,Kling Murray,completed
+7/19/2024,Dory Engelbrecht,30166320,299291,Weissnat LLC,completed
+7/21/2024,Ewell Ickov,78860790,94375,Ruecker and Sons,completed
+7/21/2024,Beverlie Mc Queen,8782944,200810,Hermann LLC,completed
+7/25/2024,Gal Liversidge,73710140,280538,Stokes Kreiger and Klein,completed
+7/28/2024,Dario McCrainor,7381664,167494,Kihn Inc,completed
+7/28/2024,Edeline Rewcassell,9179645,64260,Schamberger Gutkowski,completed
+7/29/2024,Iona Shambrook,30369330,42667,O'Hara and Sons,completed
+7/29/2024,Cathleen Kilrow,43631960,83431,Kuhn Inc,completed
+7/30/2024,Pollyanna Kubacki,3892078,129857,Windler Anderson,completed
+8/1/2024,Kory Dispencer,2746820,46170,McClure Howell and Cronin,completed
+8/3/2024,Kaycee Asman,1998174,148989,Hilll Gleason and Jast,completed
+8/5/2024,Leigha Crosdill,3221047,123676,Toy Brakus,completed
+8/6/2024,Stacie Aggiss,564175,8611,Schiller Runte and Runolfsson,completed
+8/9/2024,Kalie Coot,18443000,149024,Rempel Bode and Howe,completed
+8/9/2024,Kay Jeeves,5475294,36833,Witting LLC,completed
+8/11/2024,Odella Melling,59764320,225823,Kulas Gerhold,completed
+8/11/2024,Marylee Cana,3734197,275229,Abshire and Sons,completed
+8/14/2024,Lisha Eary,99014270,204724,Strosin O'Kon and Braun,completed
+8/16/2024,Janene Delete,2398903,170403,Kulas LLC,completed
+8/20/2024,Anne-corinne Shilladay,8927077,101321,Borer Group,completed
+8/22/2024,Winny Rustan,4919508,173660,Purdy and Sons,completed
+8/24/2024,Bambi Hallums,2839831,215080,Miller Hackett,completed
+8/24/2024,Selestina Wofenden,9609252,225107,Keebler and Sons,completed
+8/24/2024,Tiebold Verbruggen,05649930,47101,Boyle Borer,completed
+8/25/2024,Peggi Fishpool,13716100,258578,Ullrich Torp,completed
+9/2/2024,Kahlil Dickings,20839480,37692,Fritsch Heller,declined
+9/6/2024,Alphonso Scrace,37529820,288050,McLaughlin Howell and Schimmel,completed
+9/15/2024,Arlyn McCombe,2372452,270088,Watsica Williamson,completed
+9/15/2024,Valma Carville,3015282,119991,Spinka Schamberger,completed
+9/16/2024,Thadeus Ternott,98244310,269247,D'Amore Bode and Collins,completed
+"""
+
+# Create a DataFrame
+df = pd.read_csv(io.StringIO(data))
+
+# Convert date to datetime
+df['date'] = pd.to_datetime(df['date'])
+
+# Extract features from date
+df['day_of_week'] = df['date'].dt.dayofweek
+df['month'] = df['date'].dt.month
+
+# Label encode categorical variables
+le = LabelEncoder()
+df['client_name'] = le.fit_transform(df['client_name'])
+df['merchant_name'] = le.fit_transform(df['merchant_name'])
+df['transaction_status'] = le.fit_transform(df['transaction_status'])
+
+# Create features for detecting unusual transactions
+df['amount_log'] = np.log1p(df['amount'])  # Log transform for better handling of large values
+df['daily_total'] = df.groupby(['date', 'client_name'])['amount'].transform('sum')
+df['transaction_count'] = df.groupby(['date', 'client_name'])['amount'].transform('count')
+df['declined_count'] = df.groupby(['date', 'client_name'])['transaction_status'].transform(lambda x: (x == le.transform(['declined'])[0]).sum())
+
+# Create a binary target variable for unusual transactions
+amount_threshold = df['amount'].quantile(0.95)  # 95th percentile for high-volume transactions
+daily_total_threshold = df['daily_total'].quantile(0.95)  # 95th percentile for high daily totals
+transaction_count_threshold = df['transaction_count'].quantile(0.95)  # 95th percentile for high transaction counts
+declined_count_threshold = 2  # Threshold for multiple declined transactions
+
+df['unusual'] = ((df['amount'] > amount_threshold) | 
+                 (df['daily_total'] > daily_total_threshold) | 
+                 (df['transaction_count'] > transaction_count_threshold) |
+                 (df['declined_count'] >= declined_count_threshold)).astype(int)
+
+# Select features for the model
+features = ['client_name', 'amount_log', 'merchant_name', 'day_of_week', 'month', 
+            'daily_total', 'transaction_count', 'declined_count']
+X = df[features]
+y = df['unusual']
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=123)
+
+# Train the Random Forest model
+rf_model = RandomForestClassifier(n_estimators=100, random_state=123)
+rf_model.fit(X_train, y_train)
+
+# Make predictions on the test set
+y_pred = rf_model.predict(X_test)
+
+# Print classification report and confusion matrix
+print("Classification Report:")
+print(classification_report(y_test, y_pred))
+print("\nConfusion Matrix:")
+print(confusion_matrix(y_test, y_pred))
+
+# Feature importance
+feature_importance = pd.DataFrame({
+    'feature': features,
+    'importance': rf_model.feature_importances_
+}).sort_values('importance', ascending=False)
+
+print("\nFeature Importance:")
+print(feature_importance)
+
+# Visualize feature importance
+plt.figure(figsize=(10, 6))
+sns.barplot(x='importance', y='feature', data=feature_importance)
+plt.title('Feature Importance in Detecting Unusual Transactions')
+plt.xlabel('Importance')
+plt.ylabel('Feature')
+plt.tight_layout()
+plt.show()
+
+# Identify unusual transactions in the entire dataset
+df['predicted_unusual'] = rf_model.predict(df[features])
+
+print("\nUnusual Transactions Detected:")
+unusual_transactions = df[df['predicted_unusual'] == 1]
+print(unusual_transactions[['date', 'client_name', 'amount', 'merchant_name', 'transaction_status', 'daily_total', 'transaction_count', 'declined_count']])
+
+# Calculate and print some statistics about unusual transactions
+total_transactions = len(df)
+unusual_count = len(unusual_transactions)
+unusual_percentage = (unusual_count / total_transactions) * 100
+
+print(f"\nTotal transactions: {total_transactions}")
+print(f"Unusual transactions: {unusual_count}")
+print(f"Percentage of unusual transactions: {unusual_percentage:.2f}%")
+
+# Analyze patterns in unusual transactions
+print("\nPatterns in Unusual Transactions:")
+print("1. Clients with unusual transactions:")
+print(unusual_transactions['client_name'].value_counts())
+
+print("\n2. Merchants involved in unusual transactions:")
+print(unusual_transactions['merchant_name'].value_counts())
+
+print("\n3. Day of week distribution for unusual transactions:")
+print(unusual_transactions['day_of_week'].value_counts().sort_index())
+
+print("\n4. Month distribution for unusual transactions:")
+print(unusual_transactions['month'].value_counts().sort_index())
+
+# Visualize unusual transactions over time
+plt.figure(figsize=(12, 6))
+df['unusual_count'] = df['predicted_unusual'].cumsum()
+plt.plot(df['date'], df['unusual_count'])
+plt.title('Cumulative Unusual Transactions Over Time')
+plt.xlabel('Date')
+plt.ylabel('Number of Unusual Transactions')
+plt.tight_layout()
+plt.show()
+
+# Correlation analysis
+correlation_matrix = df[features + ['unusual']].corr()
+plt.figure(figsize=(12, 10))
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', vmin=-1, vmax=1, center=0)
+plt.title('Correlation Matrix of Features and Unusual Transactions')
+plt.tight_layout()
+plt.show()
+
+# Additional analysis: Transaction amount distribution
+plt.figure(figsize=(10, 6))
+sns.histplot(data=df, x='amount_log', hue='predicted_unusual', kde=True, element='step')
+plt.title('Distribution of Transaction Amounts (Log Scale)')
+plt.xlabel('Log(Amount)')
+plt.ylabel('Count')
+plt.legend(['Normal', 'Unusual'])
+plt.tight_layout()
+plt.show()
+
+# Provide some recommendations based on the analysis
+print("\nRecommendations for Compliance Team:")
+print("1. Investigate the clients and merchants involved in unusual transactions.")
+print("2. Pay special attention to transactions occurring on days and months with higher unusual transaction rates.")
+print("3. Review the correlation between features to understand which factors contribute most to unusual transactions.")
+print("4. Conduct a detailed review of transactions flagged as unusual, especially those with high amounts or multiple transactions in a day.")
+print("5. Consider implementing real-time monitoring for clients with a history of unusual transactions.")
+print("6. Regularly update the model with new transaction data to improve its accuracy in detecting unusual patterns.")
+print("7. Given the small dataset, collect more historical data to improve the model's accuracy and reliability.")
+print("8. Investigate any patterns in the 'account_to' field for unusual transactions.")
+print("9. Consider implementing a time-based analysis to detect sudden changes in transaction patterns for individual clients.")
+
+# Analyze 'account_to' patterns in unusual transactions
+print("\nAnalysis of 'account_to' patterns in unusual transactions:")
+unusual_account_to = unusual_transactions['account_to'].value_counts()
+print(unusual_account_to)
+
+# Time-based analysis
+df['transaction_date'] = df['date'].dt.date
+time_based_analysis = df.groupby('transaction_date').agg({
+    'amount': ['sum', 'mean', 'count'],
+    'predicted_unusual': 'sum'
+}).reset_index()
+time_based_analysis.columns = ['date', 'total_amount', 'avg_amount', 'transaction_count', 'unusual_count']
+
+print("\nTime-based analysis of transactions:")
+print(time_based_analysis)
+
+# Visualize time-based analysis
+plt.figure(figsize=(12, 6))
+plt.plot(time_based_analysis['date'], time_based_analysis['total_amount'], label='Total Amount')
+plt.plot(time_based_analysis['date'], time_based_analysis['unusual_count'] * 1000, label='Unusual Transactions (scaled)')
+plt.title('Total Transaction Amount and Unusual Transactions Over Time')
+plt.xlabel('Date')
+plt.ylabel('Amount / Count')
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# Analyze transaction patterns for each client
+client_analysis = df.groupby('client_name').agg({
+    'amount': ['sum', 'mean', 'count'],
+    'predicted_unusual': 'sum'
+}).reset_index()
+client_analysis.columns = ['client_name', 'total_amount', 'avg_amount', 'transaction_count', 'unusual_count']
+client_analysis['unusual_ratio'] = client_analysis['unusual_count'] / client_analysis['transaction_count']
+
+print("\nClient-based analysis:")
+print(client_analysis.sort_values('unusual_ratio', ascending=False))
+
+# Identify high-risk clients
+high_risk_clients = client_analysis[client_analysis['unusual_ratio'] > 0.5]
+print("\nHigh-risk clients (unusual ratio > 0.5):")
+print(high_risk_clients)
+
+# Additional recommendations based on the new analysis
+print("\nAdditional Recommendations:")
+print("10. Investigate the specific 'account_to' numbers associated with unusual transactions.")
+print("11. Monitor daily transaction patterns and investigate any significant deviations from the norm.")
+print("12. Pay special attention to clients with a high ratio of unusual transactions to total transactions.")
+print("13. Implement a risk scoring system for clients based on their transaction patterns and unusual transaction ratios.")
+print("14. Conduct enhanced due diligence on high-risk clients identified in the analysis.")
+print("15. Consider setting up automated alerts for transactions that match patterns of previously identified unusual transactions.")
+
+# Save the analysis results
+unusual_transactions.to_csv('unusual_transactions.csv', index=False)
+client_analysis.to_csv('client_analysis.csv', index=False)
+time_based_analysis.to_csv('time_based_analysis.csv', index=False)
+
+print("\nAnalysis results have been saved to CSV files for further investigation and reporting.")
+
+# Final notes
+print("\nFinal Notes:")
+print("- This analysis is based on a very small dataset and should be interpreted with caution.")
+print("- As more data becomes available, the model and analysis should be updated regularly.")
+print("- Consider incorporating additional data sources (e.g., customer information, historical transaction data) to improve the accuracy of unusual transaction detection.")
+print("- Regularly review and adjust the thresholds and criteria for flagging unusual transactions based on evolving patterns and regulatory requirements.")
