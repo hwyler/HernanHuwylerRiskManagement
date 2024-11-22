@@ -1,0 +1,140 @@
+# Optimizing Investment Strategies with Policy Gradients and Finite Differences by Prof. Hernan Huwyler, CPA MBA
+
+# Problem: A bank wants to optimize its investment strategy based on predictions of market downturns.
+#          The bank can choose to hold investments, hedge assets, or reallocate to safe assets.
+#          The goal is to maximize profit, considering the potential gains from investment,
+#          the costs of hedging, and the costs of reallocation.
+
+# Approach: We use a policy gradient method with finite differences to find the optimal thresholds
+#           (Theta1 and Theta2) for switching between the three investment actions.
+#           The policy samples actions (probability thresholds) from a uniform distribution between Theta1 and Theta2.
+#           The environment simulates market downturns with a log-normal probability distribution.
+
+import numpy as np
+import matplotlib.pyplot as plt
+np.random.seed(123)
+
+theta1 = 0.4  # Initial threshold for holding → hedging
+theta2 = 0.95  # Initial threshold for hedging → reallocating
+
+# Define constants
+profitability_max = 20  # Maximum profitability (potential gain)
+hedging_cost_min = 5  # Minimum hedging cost
+hedging_cost_max = 15  # Maximum hedging cost
+reallocation_cost = 18  # Fixed reallocation cost
+
+# Simulation parameters
+num_samples = 500  # Number of random samples for policy evaluation
+perturbation = 0.01  # Perturbation for finite differences
+learning_rate = 0.01  # Learning rate for gradient updates
+num_iterations = 1000  # Number of optimization iterations
+
+# Downturn probabilitydDistribution parameters 
+downturn_mean = -1.5
+downturn_std_dev = 0.6
+
+# Function to calculate profitability (profit decreases with increasing downturn probability)
+def profitability(downturn_prob):
+    return profitability_max * (1 - downturn_prob)
+
+# Function to calculate hedging cost (uniform distribution between min and max)
+def hedging_cost():
+    return np.random.uniform(hedging_cost_min, hedging_cost_max)
+
+# Function to calculate total cost (hedging or reallocation)
+def total_cost(action, downturn_prob):
+    if downturn_prob <= action:
+        return 0  # No cost for holding
+    elif action < downturn_prob <= theta2:
+        return hedging_cost()  # Hedging cost
+    else:
+        return reallocation_cost  # Reallocation cost
+
+# Function to sample actions from the policy
+def sample_action(theta1, theta2):
+    return np.random.uniform(theta1, theta2)
+
+# Function to sample downturn probability from log-normal distribution
+def get_downturn_probability():
+    return np.exp(np.random.normal(downturn_mean, downturn_std_dev))
+
+# Function to evaluate the policy
+def evaluate_policy(theta1, theta2):
+    total_profit = 0
+    for _ in range(num_samples):
+        # Sample a random downturn probability
+        downturn_prob = get_downturn_probability()
+        # Sample an action from the policy
+        action = sample_action(theta1, theta2)
+        # Calculate profit and cost
+        profit = profitability(downturn_prob) - total_cost(action, downturn_prob)
+        total_profit += profit
+    return total_profit / num_samples
+
+# Optimization loop
+theta1_history = [theta1]
+theta2_history = [theta2]
+profit_history = []
+
+for iteration in range(num_iterations):
+    # Evaluate current policy
+    current_profit = evaluate_policy(theta1, theta2)
+
+    # Finite differences to estimate gradients
+    # Perturb theta1
+    theta1_perturbed = theta1 + perturbation
+    if theta1_perturbed < theta2:
+      profit_theta1_perturbed = evaluate_policy(theta1_perturbed, theta2)
+      gradient_theta1 = (profit_theta1_perturbed - current_profit) / perturbation
+    else:
+       gradient_theta1 = 0
+
+    # Perturb theta2
+    theta2_perturbed = theta2 + perturbation
+    if theta2_perturbed > theta1:
+      profit_theta2_perturbed = evaluate_policy(theta1, theta2_perturbed)
+      gradient_theta2 = (profit_theta2_perturbed - current_profit) / perturbation
+    else:
+      gradient_theta2 = 0
+
+    # Update theta1 and theta2 using the gradients
+    theta1 += learning_rate * gradient_theta1
+    theta2 += learning_rate * gradient_theta2
+
+    # Ensure theta1 and theta2 remain within valid bounds
+    theta1 = np.clip(theta1, 0.0, 1.0)
+    theta2 = np.clip(theta2, 0.0, 1.0)
+
+    #Keep theta order
+    if theta1 > theta2:
+        theta1, theta2 = theta2, theta1
+
+    theta1_history.append(theta1)
+    theta2_history.append(theta2)
+    profit_history.append(current_profit)
+
+    # Print iteration
+
+if (iteration + 1) % 100 == 0:
+        print(f"Iteration {iteration + 1}: θ1 = {theta1:.4f}, θ2 = {theta2:.4f}, Profit = {current_profit:.4f}")
+
+# Final results and visualization
+print("\nOptimization complete:")
+print(f"Optimal θ1 = {theta1:.4f}, Optimal θ2 = {theta2:.4f}")
+
+plt.figure(figsize=(12, 6))
+plt.subplot(2, 1, 1)
+plt.plot(theta1_history, label="Theta1")
+plt.plot(theta2_history, label="Theta2")
+plt.xlabel("Iteration")
+plt.ylabel("Threshold Value")
+plt.title("Thresholds vs. Iterations")
+plt.legend()
+
+plt.subplot(2, 1, 2)
+plt.plot(profit_history)
+plt.xlabel("Iteration")
+plt.ylabel("Average Profit")
+plt.title("Average Profit vs. Iterations")
+plt.tight_layout()
+plt.show()
