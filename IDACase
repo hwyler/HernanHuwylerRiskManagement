@@ -1,0 +1,142 @@
+import numpy as np
+from scipy.stats import lognorm, poisson, norm
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+
+
+class RiskModel:
+    """
+    A Monte Carlo simulation-based risk model to estimate potential losses in a project or business scenario.
+    The model uses lognormal distributions for loss amounts and Poisson distributions for event frequency.
+
+    Attributes:
+        simulations (int): Number of Monte Carlo simulations.
+        lower (float): Lower bound for loss amounts.
+        upper (float): Upper bound for loss amounts.
+        confidence_level (float): Confidence level for loss distribution (between 0 and 1).
+        events (int): Expected number of risk events.
+        reserve (float): Reserve percentile for risk assessment (between 0 and 1).
+        total_loss (np.array): Array of total losses from simulations.
+        mean_loss (float): Mean of total losses.
+        median_loss (float): Median of total losses.
+        std_loss (float): Standard deviation of total losses.
+        var (float): Value at Risk (VaR) at 95% confidence.
+        cvar (float): Conditional Value at Risk (CVaR) at 95% confidence.
+        loss_at_reserve (float): Loss at the specified reserve percentile.
+        percentiles (dict): Dictionary of percentiles (1st, 10th, ..., 99th).
+    """
+
+    def __init__(self, simulations, lower, upper, confidence_level, events, reserve):
+        # Input validation
+        if lower <= 0 or upper <= 0 or lower >= upper:
+            raise ValueError("Lower and upper bounds must be positive, and lower < upper.")
+        if not (0 < confidence_level < 1):
+            raise ValueError("Confidence level must be between 0 and 1.")
+        if events < 0:
+            raise ValueError("Events must be non-negative.")
+        if not (0 <= reserve <= 1):
+            raise ValueError("Reserve percentile must be between 0 and 1.")
+
+        # Initialize parameters
+        self.lower = lower
+        self.upper = upper
+        self.events = events
+        self.simulations = simulations
+        self.confidence_level = confidence_level
+        self.reserve = reserve
+
+        # Set random seed for reproducibility
+        np.random.seed(123)
+
+        # Calculate lognormal distribution parameters
+        self.true_mean_log = np.log((self.lower * self.upper) ** 0.5)
+        self.true_sd_log = np.sqrt(np.log(self.upper / self.lower)) / (2 * norm.ppf(self.confidence_level))
+
+        # Run Monte Carlo simulations
+        self.total_loss = []
+        for _ in tqdm(range(self.simulations), desc="Simulating losses"):
+            num_events = poisson.rvs(self.events)
+            losses = lognorm.rvs(s=self.true_sd_log, scale=np.exp(self.true_mean_log), size=num_events)
+            self.total_loss.append(np.sum(losses))
+        self.total_loss = np.array(self.total_loss)
+
+        # Calculate risk metrics
+        self.mean_loss = np.mean(self.total_loss)
+        self.median_loss = np.median(self.total_loss)
+        self.std_loss = np.std(self.total_loss)
+        self.var = np.percentile(self.total_loss, 95)
+        self.cvar = np.mean(self.total_loss[self.total_loss > self.var])
+        self.loss_at_reserve = np.percentile(self.total_loss, self.reserve * 100)
+        self.percentiles = {p: np.percentile(self.total_loss, p) for p in [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 99]}
+
+    def summary(self):
+        """Prints a summary of the risk metrics."""
+        print(f"Mean Loss: {self.mean_loss:.2f}")
+        print(f"Median Loss: {self.median_loss:.2f}")
+        print(f"Standard Deviation of Loss: {self.std_loss:.2f}")
+        print(f"Value at Risk (95%): {self.var:.2f}")
+        print(f"Conditional Value at Risk (95%): {self.cvar:.2f}")
+        print(f"{self.reserve * 100}th Percentile Loss: {self.loss_at_reserve:.2f}")
+        print("\nPercentiles:")
+        for p, value in self.percentiles.items():
+            print(f"P({p}): {value:.2f}")
+
+
+def plot_histogram(data, title, xlabel, ylabel, color, bins=50):
+    """Helper function to plot histograms."""
+    plt.figure(figsize=(10, 6))
+    plt.hist(data, bins=bins, color=color, alpha=0.7, edgecolor='black')
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.grid(True)
+    plt.show()
+
+
+if __name__ == "__main__":
+    # Initialize and run the risk model
+    model = RiskModel(
+        lower=30000,
+        upper=50000,
+        events=3,
+        confidence_level=0.9,
+        simulations=10000,
+        reserve=0.75
+    )
+    model.summary()
+
+    # Plot individual losses per event
+    all_losses = []
+    for _ in tqdm(range(model.simulations), desc="Simulating individual losses"):
+        num_events = poisson.rvs(model.events)
+        losses = lognorm.rvs(s=model.true_sd_log, scale=np.exp(model.true_mean_log), size=num_events)
+        all_losses.extend(losses)
+    plot_histogram(all_losses, 'Histogram of Individual Losses per Event', 'Loss', 'Frequency', 'blue')
+
+    # Plot simulated probabilities (number of events per simulation)
+    simulated_events = poisson.rvs(model.events, size=model.simulations)
+    plot_histogram(simulated_events, 'Histogram of Simulated Probabilities (Number of Events)', 'Number of Events', 'Frequency', 'orange', bins=range(max(simulated_events) + 1))
+
+    # Plot loss curve (density)
+    plt.figure(figsize=(10, 6))
+    density, bins, _ = plt.hist(model.total_loss, bins=50, density=True, color='red', alpha=0.7, edgecolor='black')
+    bin_centers = 0.5 * (bins[:-1] + bins[1:])
+    plt.plot(bin_centers, density, color='blue', label='Density Curve')
+    plt.title('Loss Curve (Total Simulated Loss vs Density)')
+    plt.xlabel('Total Simulated Loss')
+    plt.ylabel('Density')
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+    # Plot accumulated density curve (loss exceedance curve)
+    sorted_losses = np.sort(model.total_loss)
+    accumulated_density = np.linspace(0, 1, len(sorted_losses))
+    plt.figure(figsize=(10, 6))
+    plt.plot(sorted_losses, accumulated_density * 100, color='green', label='Loss Exceedance Curve')
+    plt.title('Accumulated Density Curve (Loss Exceedance Curve)')
+    plt.xlabel('Total Simulated Loss')
+    plt.ylabel('Cumulative Density (%)')
+    plt.grid(True)
+    plt.legend()
+    plt.show()
