@@ -1,0 +1,43 @@
+#This Python script generates synthetic sales transactions using a Generative Adversarial Network (GAN) model. The synthetic data is based on a provided real dataset, and the Destination column is post-processed to ensure it contains valid country names.
+
+!pip install sdv
+
+import pandas as pd
+from sdv.metadata import SingleTableMetadata
+from sdv.single_table import CTGANSynthesizer
+import random
+
+# Set random seed
+random.seed(123)
+
+# Real data
+real_data = pd.DataFrame({
+    'Sector': ['Police', 'Sport', 'Defense', 'Police', 'Oil', 'Defense', 'Defense', 'Defense', 'Defense', 'Defense', 'Police', 'Police', 'Defense', 'Defense', 'Sport', 'Sport', 'Sport', 'Defense', 'Defense', 'Police'],
+    'Export': ['Firearms', 'Firearms', 'Laser', 'Firearms', 'Explosives', 'Firearms', 'Ammunition', 'Firearms', 'Explosives', 'Explosives', 'Firearms', 'Ammunition', 'Laser', 'Firearms', 'Ammunition', 'Ammunition', 'Firearms', 'Firearms', 'Firearms', 'Ammunition'],
+    'Origin': ['Germany', 'Germany', 'Israel', 'Israel', 'Germany', 'Israel', 'Israel', 'Germany', 'Israel', 'Israel', 'Germany', 'Germany', 'Israel', 'Germany', 'Germany', 'Germany', 'Germany', 'Israel', 'Israel', 'Germany'],
+    'Destination': ['Switzerland', 'Singapore', 'Turkey', 'Turkey', 'Qatar', 'Cyprus', 'Cyprus', 'Poland', 'Cyprus', 'Cyprus', 'China', 'Austria', 'Lebanon', 'Chad', 'Switzerland', 'Switzerland', 'Denmark', 'Azerbaijan', 'Azerbaijan', 'Poland'],
+    'Value': [560000, 150000, 760000, 650000, 980000, 490000, 209000, 674000, 2470000, 1200000, 280000, 390000, 1500000, 765000, 65000, 34000, 38000, 980000, 2300000, 390000],
+    'Route': ['Land', 'Air', 'Air', 'Air', 'Air', 'Sea', 'Sea', 'Land', 'Sea', 'Sea', 'Air', 'Land', 'Sea', 'Air', 'Land', 'Land', 'Land', 'Air', 'Air', 'Land'],
+    'Documentation': ['Complete', 'Complete', 'Partial', 'Complete', 'Complete', 'Complete', 'Complete', 'Complete', 'Partial', 'Partial', 'Complete', 'Complete', 'Partial', 'Complete', 'Complete', 'Complete', 'Complete', 'Complete', 'Complete', 'Complete']
+})
+
+# Metadata
+metadata = SingleTableMetadata()
+metadata.detect_from_dataframe(real_data)
+
+# Train CTGAN
+ctgan = CTGANSynthesizer(metadata, epochs=500, verbose=True)
+ctgan.fit(real_data)
+
+# Generate synthetic data
+synthetic_data = ctgan.sample(num_rows=20)
+
+# Replace placeholder Destination values with valid country names
+valid_countries = real_data['Destination'].unique()
+synthetic_data['Destination'] = random.choices(valid_countries, k=len(synthetic_data))
+
+# Print results
+print("Real Data:")
+print(real_data)
+print("\nSynthetic Data:")
+print(synthetic_data)
