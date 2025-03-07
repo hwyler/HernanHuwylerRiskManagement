@@ -1,0 +1,152 @@
+# Risk Quantification using Monte Carlo Simulation
+# ===============================================
+#
+# Description:
+# ------------
+# This R script performs risk quantification using Monte Carlo simulation to model potential losses.
+# It combines frequency (Poisson distribution) and severity (lognormal distribution) to simulate total losses
+# over a specified time horizon. The script generates a loss exceedance curve and calculates key risk metrics.
+#
+# Key Features:
+# -------------
+# - Models event frequency using Poisson distribution
+# - Models loss severity using lognormal distribution
+# - Performs 10,000 Monte Carlo simulations
+# - Generates a loss exceedance curve
+# - Calculates expected loss and Value at Risk (VaR) at various confidence levels
+#
+# Inputs:
+# -------
+# - best_loss: Best-case loss (assumed 10th percentile)
+# - worst_loss: Worst-case loss (assumed 90th percentile)
+# - expected_events: Expected number of events in the time horizon
+#
+# Outputs:
+# --------
+# - Loss exceedance curve plot
+# - Risk metrics (expected loss, 80th, 95th, and 99th percentile losses)
+# - List containing simulated total losses and exceedance curve data
+#
+# Dependencies:
+# -------------
+# - ggplot2: For plotting the loss exceedance curve
+#
+# Usage:
+# ------
+# Run the script with predefined inputs or modify the input parameters:
+#   best_loss, worst_loss, expected_events
+# The script will output a plot and risk metrics to the console.
+#
+# Notes:
+# ------
+# - The lognormal parameters are estimated assuming best_loss and worst_loss
+#   correspond to the 10th and 90th percentiles, respectively.
+# - The seed (123) is set for reproducibility of simulation results.
+# - The approach uses Monte Carlo simulation to approximate the compound distribution
+#   of frequency and severity.
+#
+# Limitations:
+# ------------
+# - Assumes fixed percentiles for lognormal parameter estimation, which may not align
+#   with all use cases.
+# - Hardcoded inputs limit flexibility; consider adding user input functionality.
+# - Limited risk metrics; could be expanded to include Expected Shortfall (CVaR).
+#
+# Author: Prof Hernan Huwyler
+# Date: Marc 7 2025
+# License: MIT 
+
+if (!require("ggplot2")) install.packages("ggplot2")
+library(ggplot2)
+
+best_loss <- 1000     # Best case loss 
+worst_loss <- 2000   # Worst case loss 
+expected_events <- 4  # Expected number of events in the time horizon
+
+calculate_lognormal_params <- function(best_loss, worst_loss) {
+  q1 <- qnorm(0.2)
+  q2 <- qnorm(0.8)
+  set.seed(123)    
+  sigma <- log(worst_loss/best_loss) / (q2 - q1)
+  mu <- log(best_loss) - q1 * sigma
+  
+  return(list(mu = mu, sigma = sigma))
+}
+
+
+run_simulations <- function(best_loss, worst_loss, expected_events, n_sims = 10000) {
+  params <- calculate_lognormal_params(best_loss, worst_loss)
+  mu <- params$mu
+  sigma <- params$sigma
+  
+  total_losses <- numeric(n_sims)
+  
+  for (i in 1:n_sims) {
+    n_events <- rpois(1, lambda = expected_events)
+    
+    if (n_events > 0) {
+      losses <- rlnorm(n_events, meanlog = mu, sdlog = sigma)
+      total_losses[i] <- sum(losses)
+    } else {
+      total_losses[i] <- 0
+    }
+  }
+  
+  return(total_losses)
+}
+
+create_exceedance_curve <- function(total_losses) {
+  sorted_losses <- sort(total_losses)
+  
+  exceedance_probs <- 1 - seq(0, 1, length.out = length(sorted_losses) + 1)[-1]
+  
+  return(data.frame(loss = sorted_losses, exceedance_prob = exceedance_probs))
+}
+
+risk_quantification <- function(best_loss, worst_loss, expected_events) {
+  if (best_loss >= worst_loss) {
+    stop("Best case loss must be less than worst case loss")
+  }
+  if (expected_events <= 0) {
+    stop("Number of expected events must be positive")
+  }
+  
+  cat("Input Parameters:\n")
+  cat("Best Case Loss:", best_loss, "\n")
+  cat("Worst Case Loss:", worst_loss, "\n")
+  cat("Expected Number of Events:", expected_events, "\n")
+  cat("Number of Simulations: 10,000\n\n")
+  
+  cat("Running 10,000 Monte Carlo simulations...\n")
+  total_losses <- run_simulations(best_loss, worst_loss, expected_events)
+  
+  cat("Creating loss exceedance curve...\n")
+  curve_data <- create_exceedance_curve(total_losses)
+  
+  p <- ggplot(curve_data, aes(x = loss, y = exceedance_prob * 100)) +
+    geom_line(color = "blue", size = 1) +
+    labs(
+      title = "Loss Exceedance Curve",
+      x = "Accumulated Loss",
+      y = "Exceedance Probability (%)"
+    ) +
+    theme_minimal() +
+    scale_y_continuous(limits = c(0, 100))
+  
+  print(p)
+  
+  cat("\nRisk Metrics:\n")
+  cat("Expected Loss:", round(mean(total_losses), 2), "\n")
+  cat("80th Percentile Loss:", round(quantile(total_losses, 0.8), 2), "\n")
+  cat("95th Percentile Loss:", round(quantile(total_losses, 0.95), 2), "\n")
+  cat("99th Percentile Loss:", round(quantile(total_losses, 0.99), 2), "\n")
+  
+  return(list(
+    total_losses = total_losses,
+    curve_data = curve_data
+  ))
+}
+
+
+results <- risk_quantification(best_loss, worst_loss, expected_events)
+              
