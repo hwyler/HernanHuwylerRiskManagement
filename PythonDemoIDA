@@ -1,0 +1,333 @@
+import pandas as pd
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.preprocessing import StandardScaler
+
+# Input sensor data (hardcoded for a demo)
+
+data = """
+machine date  vibration_rms temperature_c pressure_psi  flow_rate_l_min status
+A 1/1/2025  136 52  5.4 12.3  1
+A 1/2/2025  138 50  5.3 12.3  1
+A 1/3/2025  136 51  5.3 12.3  1
+A 1/4/2025  136 51  5.3 12.2  1
+A 1/5/2025  137 50  5.3 12.2  1
+A 1/6/2025  141 49  5.3 12.2  1
+A 1/7/2025  143 50  5.3 12.3  1
+A 1/8/2025  140 51  5.3 12.2  1
+A 1/9/2025  141 52  5.3 12.2  1
+A 1/10/2025 140 51  5.3 12.2  1
+A 1/11/2025 144 51  5.3 12.3  1
+A 1/12/2025 146 51  5.3 12.2  1
+A 1/13/2025 148 52  5.3 12.2  1
+A 1/14/2025 150 51  5.4 12.2  1
+A 1/15/2025 148 50  5.4 12.1  1
+A 1/16/2025 149 50  5.4 12.1  1
+A 1/17/2025 153 51  5.4 12  1
+A 1/18/2025 153 52  5.3 12.1  1
+A 1/19/2025 154 52  5.3 12.2  1
+A 1/20/2025 156 53  5.4 12.3  1
+A 1/21/2025 155 53  5.4 12.2  1
+A 1/22/2025 158 53  5.3 12.1  1
+A 1/23/2025 158 53  5.4 12  1
+A 1/24/2025 173 53  5.4 11.9  1
+A 1/25/2025 174 54  5.4 12  1
+A 1/26/2025 172 56  5.5 12.1  1
+A 1/27/2025 172 56  5.5 12  1
+A 1/28/2025 173 57  5.5 12.1  1
+A 1/29/2025 173 57  5.6 12  1
+A 1/30/2025 177 58  5.6 11.9  1
+A 1/31/2025 175 59  5.6 11.9  1
+A 2/1/2025  179 60  5.6 12  1
+A 2/2/2025  178 59  5.6 11.9  1
+A 2/3/2025  183 60  5.6 11.9  1
+A 2/4/2025  182 61  5.6 11.9  1
+A 2/5/2025  184 61  5.6 12.9  0
+A 2/6/2025  138 56  5.3 11.7  1
+A 2/7/2025  136 56  5.3 11.6  1
+A 2/8/2025  138 57  5.3 11.6  1
+A 2/9/2025  135 56  5.3 11.7  1
+A 2/10/2025 132 56  5.3 11.6  1
+A 2/11/2025 134 55  5.3 11.7  1
+A 2/12/2025 137 54  5.3 11.6  1
+A 2/13/2025 137 55  5.2 11.5  1
+A 2/14/2025 134 55  5.2 11.4  1
+A 2/15/2025 133 55  5.1 11.3  1
+A 2/16/2025 136 54  5.2 11.4  1
+A 2/17/2025 139 53  5.2 11.7  1
+A 2/18/2025 139 53  5.3 11.6  1
+A 2/19/2025 137 53  5.3 11.5  1
+A 2/20/2025 136 53  5.3 11.4  1
+A 2/21/2025 133 53  5.3 11.3  1
+A 2/22/2025 135 53  5.2 11.4  1
+A 2/23/2025 133 53  5.3 11.4  1
+A 2/24/2025 134 53  5.3 11.4  1
+A 2/25/2025 136 52  5.6 11.5  1
+A 2/26/2025 139 51  5.5 11.6  1
+A 2/27/2025 140 58  5.5 11.8  1
+A 2/28/2025 137 58  5.5 11.7  1
+A 3/1/2025  137 56  5.5 11.7  1
+A 3/2/2025  138 56  5.4 11.7  1
+A 3/3/2025  138 57  5.4 11.6  1
+A 3/4/2025  138 56  5.4 11.6  1
+A 3/5/2025  141 55  5.4 11.7  1
+A 3/6/2025  139 55  5.4 11.7  1
+A 3/7/2025  139 55  5.3 11.8  1
+A 3/8/2025  136 56  5.3 11.8  1
+A 3/9/2025  134 56  5.3 11.8  1
+A 3/10/2025 134 57  5.3 11.9  1
+A 3/11/2025 132 56  5.3 12  1
+A 3/12/2025 133 56  5.3 12  1
+A 3/13/2025 135 55  5.3 11.9  1
+A 3/14/2025 138 54  5.2 11.9  1
+A 3/15/2025 141 55  5.2 12  1
+A 3/16/2025 139 55  5.1 12.1  1
+A 3/17/2025 142 55  5.2 12  1
+A 3/18/2025 144 54  5.2 11.9  1
+A 3/19/2025 148 53  5.3 12  1
+A 3/20/2025 149 55  5.3 11.8  1
+A 3/21/2025 151 53  5.3 12  1
+A 3/22/2025 150 53  5.3 12  1
+A 3/23/2025 152 53  5.2 12.1  1
+A 3/24/2025 151 53  5.3 12.1  1
+A 3/25/2025 152 51  5.3 12.2  1
+A 3/26/2025 163 58  5.2 12.2  1
+A 3/27/2025 163 62  5.4 12.3  1
+A 3/28/2025 178 62  5.6 12.2  0
+A 3/29/2025 136 50  5.2 10.6  1
+A 3/30/2025 135 52  5.2 10.7  1
+A 3/31/2025 134 51  5.2 10.7  1
+B 1/1/2025  147 47  4.7 11.3  1
+B 1/2/2025  149 46  4.8 11.3  1
+B 1/3/2025  150 47  4.8 11.3  1
+B 1/4/2025  152 47  4.8 11.3  1
+B 1/5/2025  154 47  4.7 11.3  1
+B 1/6/2025  155 47  4.8 11.4  1
+B 1/7/2025  153 48  4.8 11.4  1
+B 1/8/2025  155 49  4.8 11.4  1
+B 1/9/2025  156 50  5 11.4  1
+B 1/10/2025 164 51  5.1 11.4  1
+B 1/11/2025 160 62  5.2 11.4  1
+B 1/12/2025 164 61  5.3 11.4  1
+B 1/13/2025 176 62  5.4 12.4  0
+B 1/14/2025 140 47  4.8 10.2  1
+B 1/15/2025 141 46  4.9 10.3  1
+B 1/16/2025 159 47  4.8 10.3  1
+B 1/17/2025 161 47  4.8 10.2  1
+B 1/18/2025 159 46  4.8 10.2  1
+B 1/19/2025 161 47  4.8 10.2  1
+B 1/20/2025 161 47  4.9 10.2  1
+B 1/21/2025 162 47  4.8 10.3  1
+B 1/22/2025 170 57  5.1 10.2  1
+B 1/23/2025 171 62  5.2 11.3  1
+B 1/24/2025 173 63  5.3 12.3  0
+B 1/25/2025 138 44  4.6 10.2  1
+B 1/26/2025 138 43  4.6 10.6  1
+B 1/27/2025 138 42  4.6 10.5  1
+B 1/28/2025 136 43  4.6 10.4  1
+B 1/29/2025 133 42  4.6 10.3  1
+B 1/30/2025 137 43  4.7 10.3  1
+B 1/31/2025 136 43  4.7 10.3  1
+B 2/1/2025  136 44  4.7 10.4  1
+B 2/2/2025  134 55  4.7 10.4  1
+B 2/3/2025  156 61  5 10.5  1
+B 2/4/2025  169 62  5.2 11.5  1
+B 2/5/2025  179 64  5.6 12.4  0
+B 2/6/2025  140 45  4.6 10.5  1
+B 2/7/2025  140 46  4.6 10.6  1
+B 2/8/2025  141 46  4.6 10.5  1
+B 2/9/2025  140 47  5.3 10.4  1
+B 2/10/2025 142 46  5.3 10.3  1
+B 2/11/2025 140 47  5.3 10.3  1
+B 2/12/2025 139 48  5.3 10.2  1
+B 2/13/2025 138 47  5.2 10.2  1
+B 2/14/2025 136 47  5.2 10.2  1
+B 2/15/2025 139 46  5.1 10.1  1
+B 2/16/2025 142 47  5.1 10  1
+B 2/17/2025 142 47  5.1 10  1
+B 2/18/2025 146 47  5.1 10  1
+B 2/19/2025 144 47  5.1 9.9 1
+B 2/20/2025 142 46  5.1 9.9 1
+B 2/21/2025 141 46  5 9.8 1
+B 2/22/2025 143 46  5 9.9 1
+B 2/23/2025 145 46  5 9.9 1
+B 2/24/2025 143 45  5.1 9.9 1
+B 2/25/2025 140 44  5 9.8 1
+B 2/26/2025 142 44  5 9.8 1
+B 2/27/2025 144 44  5 9.9 1
+B 2/28/2025 144 44  5 10  1
+B 3/1/2025  145 44  5.1 10  1
+B 3/2/2025  149 45  5.1 10.1  1
+B 3/3/2025  150 44  5.1 10.1  1
+B 3/4/2025  149 43  5.1 10.2  1
+B 3/5/2025  152 43  5.1 10.2  1
+B 3/6/2025  151 43  5.1 10.2  1
+B 3/7/2025  147 43  5.1 10.1  1
+B 3/8/2025  148 43  5 10.1  1
+B 3/9/2025  146 44  5.1 10.1  1
+B 3/10/2025 145 43  5.1 10  1
+B 3/11/2025 149 44  5.1 10  1
+B 3/12/2025 148 45  5.1 10.1  1
+B 3/13/2025 148 44  5.1 10.1  1
+B 3/14/2025 149 44  5 10.2  1
+B 3/15/2025 152 44  5.1 10.3  1
+B 3/16/2025 150 44  5.1 10.2  1
+B 3/17/2025 149 44  5.1 10.3  1
+B 3/18/2025 151 43  5.1 10.3  1
+B 3/19/2025 153 42  5.1 10.2  1
+B 3/20/2025 151 43  5.1 10.1  1
+B 3/21/2025 153 42  5.1 10.2  1
+B 3/22/2025 150 41  5.1 10.2  1
+B 3/23/2025 152 48  5.1 10.3  1
+B 3/24/2025 162 51  5.2 11.2  1
+B 3/25/2025 175 60  5.5 12.3  0
+B 3/26/2025 137 43  5.2 10.3  1
+B 3/27/2025 136 42  5.2 10.3  1
+B 3/28/2025 146 42  5.2 11.3  1
+B 3/29/2025 136 42  4.7 10.2  1
+B 3/30/2025 137 43  4.7 10.3  1
+B 3/31/2025 136 42  4.7 10.3  1
+"""
+
+df = pd.DataFrame([x.split() for x in data.strip().split('\n') if x.strip()], 
+                 columns=['machine', 'date', 'vibration_rms', 'temperature_c', 
+                          'pressure_psi', 'flow_rate_l_min', 'status'])
+df = df[1:]  
+df['date'] = pd.to_datetime(df['date'])
+df[['vibration_rms', 'temperature_c', 'pressure_psi', 'flow_rate_l_min', 'status']] = \
+    df[['vibration_rms', 'temperature_c', 'pressure_psi', 'flow_rate_l_min', 'status']].astype(float)
+
+# Create features and add trend features for classification
+
+def engineer_features(data):
+    df = data.copy()
+    
+    df['vib_temp'] = df['vibration_rms'] * df['temperature_c'] / 100
+    df['press_flow'] = df['pressure_psi'] * df['flow_rate_l_min']
+    df = df.sort_values(['machine', 'date'])
+    for col in ['vibration_rms', 'temperature_c', 'pressure_psi', 'flow_rate_l_min']:
+        df[f'{col}_change'] = df.groupby('machine')[col].diff().fillna(0)
+        df[f'{col}_avg3'] = df.groupby('machine')[col].transform(
+            lambda x: x.rolling(3, min_periods=1).mean())
+        df = df.fillna(0)
+    
+    return df
+
+# Process data and model features
+
+df_processed = engineer_features(df)
+feature_cols = [
+    'vibration_rms', 'temperature_c', 'pressure_psi', 'flow_rate_l_min',
+    'vib_temp', 'press_flow',
+    'vibration_rms_change', 'temperature_c_change',
+    'vibration_rms_avg3', 'temperature_c_avg3'
+]
+
+X = df_processed[feature_cols]
+y = df_processed['status']
+y = 1 - y  # Now 1 = failure, 0 = working
+
+# Split data, scale features, and train model
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=123, stratify=y)
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+model = RandomForestClassifier(
+    n_estimators=100,
+    max_depth=5,
+    min_samples_leaf=5,
+    class_weight='balanced',  
+    random_state=123
+)
+cv_scores = cross_val_score(model, X_train_scaled, y_train, cv=5, scoring='roc_auc')
+print(f"Cross-validation AUC: {np.mean(cv_scores):.3f}")
+
+# Train and evaluate final model
+model.fit(X_train_scaled, y_train)
+y_pred = model.predict(X_test_scaled)
+y_prob = model.predict_proba(X_test_scaled)[:, 1]  
+
+print("\nModel performance:")
+print(f"Accuracy: {accuracy_score(y_test, y_pred):.3f}")
+print("\nClassification report:")
+print(classification_report(y_test, y_pred))
+print("\nConfusion matrix:")
+cm = confusion_matrix(y_test, y_pred)
+print(cm)
+importance = sorted(zip(model.feature_importances_, feature_cols), reverse=True)
+print("\nKey indicators for failure prediction:")
+for score, name in importance[:5]:
+    print(f"- {name}: {score:.3f}")
+
+# Function to predict failure probability
+def predict_failure_risk(vib, temp, press, flow, prev_vib=None, prev_temp=None):
+    vib_change = 0 if prev_vib is None else vib - prev_vib
+    temp_change = 0 if prev_temp is None else temp - prev_temp
+    vib_avg = vib
+    temp_avg = temp
+    input_data = pd.DataFrame({
+        'vibration_rms': [vib],
+        'temperature_c': [temp],
+        'pressure_psi': [press],
+        'flow_rate_l_min': [flow],
+        'vib_temp': [vib * temp / 100],
+        'press_flow': [press * flow],
+        'vibration_rms_change': [vib_change],
+        'temperature_c_change': [temp_change],
+        'vibration_rms_avg3': [vib_avg],
+        'temperature_c_avg3': [temp_avg]
+    })
+    input_scaled = scaler.transform(input_data)
+    
+    # Calculate probability of failure
+    failure_prob = model.predict_proba(input_scaled)[0, 1]
+    
+    return failure_prob
+
+# Store the previous readings for trend calculation
+prev_vib = None
+prev_temp = None
+
+# Data input for daily estimations
+print("\n--- Machine Failure Risk Calculator ---")
+while True:
+    print("\nEnter current readings:")
+    try:
+        vib = float(input("Vibration (130-175): "))
+        temp = float(input("Temperature (40-60): "))
+        press = float(input("Pressure (4.5-5.5): "))
+        flow = float(input("Flow Rate (9-11): "))      
+        risk = predict_failure_risk(vib, temp, press, flow, prev_vib, prev_temp)
+        prev_vib = vib
+        prev_temp = temp
+        
+        # Determine risk level based on the machine failure probabilty 
+        if risk < 0.25:
+            risk_level = "LOW"
+            action = "Normal operation - continue monitoring"
+        elif risk < 0.5:
+            risk_level = "MEDIUM"
+            action = "Increase monitoring frequency"
+        elif risk < 0.75:
+            risk_level = "HIGH"
+            action = "Schedule maintenance within 48 hours"
+        else:
+            risk_level = "CRITICAL"
+            action = "IMMEDIATE MAINTENANCE REQUIRED!!!"
+        
+        # Display results
+        print(f"\nFAILURE RISK ASSESSMENT:")
+        print(f"Probability of failure: {risk:.1%}")
+        print(f"Risk level: {risk_level}")
+        print(f"Recommended action: {action}")
+        
+    except ValueError:
+        print("Invalid input. Please enter numeric values.")
+    
+    if input("\nAnalyze another reading? (y/n): ").lower() != 'y':
+        break
+
+print("Failure analysis complete")
