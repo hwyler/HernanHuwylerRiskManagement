@@ -1,7 +1,9 @@
 import pandas as pd
+import numpy as np 
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score, mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split 
 import matplotlib.pyplot as plt
 
 # Define the historical cases data
@@ -21,69 +23,142 @@ new_unseen_cases_data = {
     'Area': ['Bay area', 'Los Angeles'],
     'Size': ['Large', 'Mid'],
     'Vendor manager': ['Liam', 'Logan'],
-    'Disputes': ['No', 'No']
+    'Disputes': ['No', 'No'] 
 }
 
 # Convert dictionaries to DataFrames
 historical_df = pd.DataFrame(historical_cases_data)
 new_unseen_df = pd.DataFrame(new_unseen_cases_data)
 
+# --- Preprocessing ---
 # Encode categorical features
 label_encoders = {}
-for column in historical_df.select_dtypes(include=['object']).columns:
+categorical_cols = historical_df.select_dtypes(include=['object']).columns
+# Ensure 'Disputes' is handled as the target if it's object type, otherwise it might be encoded too early.
+# In this case, 'Disputes' is the target. Let's separate it before encoding features.
+X_historical = historical_df.drop(columns=['Disputes'])
+y_historical = historical_df['Disputes']
+
+# Encode target variable 'Disputes' separately
+disputes_encoder = LabelEncoder()
+y_historical_encoded = disputes_encoder.fit_transform(y_historical)
+
+# Encode features for historical data
+for column in X_historical.select_dtypes(include=['object']).columns:
     label_encoders[column] = LabelEncoder()
-    historical_df[column] = label_encoders[column].fit_transform(historical_df[column])
-    new_unseen_df[column] = label_encoders[column].transform(new_unseen_df[column])
+    X_historical[column] = label_encoders[column].fit_transform(X_historical[column])
+
+# Encode features for new unseen data
+# We need to handle the 'Disputes' column in new_unseen_df carefully.
+# If it's meant for prediction, it shouldn't be there or should be dropped before prediction.
+X_new_unseen = new_unseen_df.drop(columns=['Disputes']) # Assuming 'Disputes' in new data is placeholder/not actual target
+for column in X_new_unseen.select_dtypes(include=['object']).columns:
+    if column in label_encoders: 
+      X_new_unseen[column] = label_encoders[column].transform(X_new_unseen[column])
+    else:
+      print(f"Warning: Column {column} in new data was not in historical data. It will be ignored or cause an error if not handled.")
+
 
 # Scale numerical features
 scaler = StandardScaler()
-historical_df[['DD score']] = scaler.fit_transform(historical_df[['DD score']])
-new_unseen_df[['DD score']] = scaler.transform(new_unseen_df[['DD score']])
+numerical_cols = ['DD score'] 
 
-# Check for any mismatch in the number of features
-print("Number of features in historical data:", historical_df.shape[1])
-print("Number of features in new unseen data:", new_unseen_df.shape[1])
+X_historical[numerical_cols] = scaler.fit_transform(X_historical[numerical_cols])
+X_new_unseen[numerical_cols] = scaler.transform(X_new_unseen[numerical_cols])
 
+
+# --- Train-Test Split of Historical Data ---
 # Splitting the historical dataset into features (X) and target (y)
-X_train = historical_df.drop(columns=['Disputes'])
-y_train = historical_df['Disputes']
+X_train, X_test, y_train, y_test = train_test_split(
+    X_historical, y_historical_encoded, test_size=0.2, random_state=42, stratify=y_historical_encoded
+)
 
-# Training a classifier to predict disputes
+print("Number of features in X_train:", X_train.shape[1])
+print("Number of features in X_new_unseen:", X_new_unseen.shape[1])
+
+# Check for any mismatch in the number of features after all preprocessing
+if X_train.shape[1] != X_new_unseen.shape[1]:
+    print("Warning: Mismatch in the number of features between training data and new unseen data.")
+    print(f"Training features: {X_train.columns.tolist()}")
+    print(f"New unseen features: {X_new_unseen.columns.tolist()}")
+
+
+# --- Model Training ---
 classifier = RandomForestClassifier(n_estimators=100, random_state=42)
 classifier.fit(X_train, y_train)
 
-# Predicting disputes for the new unseen cases
-new_unseen_predictions = classifier.predict_proba(new_unseen_df.drop(columns=['Disputes']))
-print("Chances of causing disputes for new unseen cases:")
-for i, prob in enumerate(new_unseen_predictions):
-    print(f"Case {i+1}: {prob[1]}")
-
-# Evaluate the classifier's performance
+# --- Evaluating the classifier's performance on the TRAINING SET ---
 train_predictions = classifier.predict(X_train)
+train_proba_predictions = classifier.predict_proba(X_train)[:, 1] # Probabilities for the positive class
 
-# Compute evaluation metrics
+print("\n--- Training Set Evaluation ---")
 f1_train = f1_score(y_train, train_predictions, zero_division=0)
 mae_train = mean_absolute_error(y_train, train_predictions)
 mse_train = mean_squared_error(y_train, train_predictions)
-rmse_train = mean_squared_error(y_train, train_predictions, squared=False)
+rmse_train = np.sqrt(mse_train) # Corrected RMSE calculation
 r2_train = r2_score(y_train, train_predictions)
 
-print("\nTraining Set:")
 print("F1 Score:", f1_train)
 print("MAE:", mae_train)
 print("MSE:", mse_train)
 print("RMSE:", rmse_train)
 print("R-squared:", r2_train)
 
-# Plot DD Score for training and testing sets
-from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(historical_df.drop(columns=['Disputes']), historical_df['Disputes'], test_size=0.2, random_state=42)
+# --- Evaluating the classifier's performance on the TEST SET ---
+if len(X_test) > 0: # Ensure test set is not empty
+    test_predictions = classifier.predict(X_test)
+    test_proba_predictions = classifier.predict_proba(X_test)[:, 1]
+
+    print("\n--- Test Set Evaluation ---")
+    f1_test = f1_score(y_test, test_predictions, zero_division=0)
+    mae_test = mean_absolute_error(y_test, test_predictions)
+    mse_test = mean_squared_error(y_test, test_predictions)
+    rmse_test = np.sqrt(mse_test) # Corrected RMSE calculation
+    r2_test = r2_score(y_test, test_predictions)
+
+    print("F1 Score:", f1_test)
+    print("MAE:", mae_test)
+    print("MSE:", mse_test)
+    print("RMSE:", rmse_test)
+    print("R-squared:", r2_test)
+else:
+    print("\nTest set is empty, skipping test set evaluation.")
+
+# --- Predicting disputes for the NEW UNSEEN CASES ---
+# Ensure X_new_unseen has the same columns in the same order as X_train
+if set(X_train.columns) == set(X_new_unseen.columns):
+    X_new_unseen_aligned = X_new_unseen[X_train.columns] 
+
+    new_unseen_pred_proba = classifier.predict_proba(X_new_unseen_aligned)
+    print("\nChances of causing disputes for new unseen cases:")
+    for i, prob in enumerate(new_unseen_pred_proba):
+
+        positive_class_label = disputes_encoder.classes_[1] # Get the label for class 1
+        print(f"Case {i+1}: Probability of '{positive_class_label}' dispute = {prob[1]:.4f}")
+
+
+
+else:
+    print("\nError: Column mismatch between training data and new unseen data. Cannot make predictions.")
+    print(f"Training columns: {list(X_train.columns)}")
+    print(f"New unseen columns: {list(X_new_unseen.columns)}")
+
+
+
 plt.figure(figsize=(10, 6))
-plt.scatter(X_train['DD score'], y_train, color='blue', label='Training Set')
-plt.scatter(X_test['DD score'], y_test, color='green', label='Testing Set')
-plt.xlabel('DD Score')
-plt.ylabel('Disputes')
-plt.title('DD Score vs. Disputes')
+
+plt.scatter(X_train['DD score'], y_train, color='blue', label='Training Set (Actuals)', alpha=0.6)
+
+
+
+if len(X_test) > 0:
+    plt.scatter(X_test['DD score'], y_test, color='green', label='Testing Set (Actuals)', alpha=0.6)
+
+
+plt.xlabel('Scaled DD Score')
+plt.ylabel('Disputes (Encoded: 0=No, 1=Yes)') 
+plt.title('Scaled DD Score vs. Disputes')
 plt.legend()
 plt.grid(True)
+plt.yticks([0, 1], labels=[disputes_encoder.classes_[0], disputes_encoder.classes_[1]]) 
 plt.show()
