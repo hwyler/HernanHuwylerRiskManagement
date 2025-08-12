@@ -1,173 +1,316 @@
 """
-Quantifying Risks using Multiple Linear Regression Model Repository Overview
+Quantifying Risk with a Compound Poisson–Lognormal Monte Carlo Model.
 
-This repository provides a Python implementation of a Multiple Linear Regression model for estimating compensation risks. The model utilizes a Monte Carlo simulation to quantify risk using convolution on minimum and maximum losses in a lognormal distribution and probabilities in a Poisson distribution.
+Method
+- Frequency: N ~ Poisson(λ) per period (e.g., year)
+- Severity: L ~ Lognormal(μ, σ), calibrated so that a user-specified
+  central confidence interval [lower, upper] holds with probability 'confidence_level'
+- Total loss per simulation: S = sum_{j=1..N} L_j
 
-Usage
-
-To use the model, simply create an instance of the RiskModel class, passing in the desired parameters:
-
-    simulations: The number of simulations to run.
-    lower: The lower bound of the loss distribution.
-    upper: The upper bound of the loss distribution.
-    confidence_level: The confidence level for the simulation.
-    events: The number of events to simulate.
-    reserve: The reserve percentage.
-
-Model Methods
-
-The RiskModel class provides several methods for analyzing and visualizing the results:
-
-    summary(): Prints a summary of the simulation results, including mean loss, median loss, standard deviation of loss, value at risk, and conditional value at risk.
-    plot_loss_exceedance_curve(): Plots the loss exceedance curve.
-    plot_loss_distribution(): Plots the total loss distribution.
-    plot_heatmap(): Plots a correlation heatmap between loss, probability, and total loss.
-    plot_scatter(): Plots a scatter plot of number of events vs total loss.
-
-Code Organization
-
-The code is organized into the following sections:
-
-    risk_model.py: Contains the RiskModel class.
-    README.md: Provides an overview of the repository and usage instructions.
-
-Commit Messages
-
-Commit messages should follow the standard format:
-
-[type]([scope]): [subject]
-
-    type: One of feat, fix, docs, style, refactor, or perf.
-    scope: Optional, specifies the scope of the change.
-    subject: A brief description of the change.
-
-API Documentation
-
-API documentation is provided using docstrings and follows the Google Python Style Guide.
-
-License
-
-This repository is licensed under the MIT License. See LICENSE for details.
-
-Acknowledgments
-
-This repository was developed by Prof. Hernan Huwyler MBA CPA, Executive Director, IE Business School.
-Keywords
-
-Risk, Compliance, Quantitative Risks, Modelling, Regression, Convolution, Monte Carlo Simulation, Confidence Interval.
+Features
+- Calibrates (μ, σ) from business-facing inputs (lower/upper + confidence level)
+- Vectorized simulation (fast for large trials)
+- Summary metrics: mean, median, standard deviation, VaR(95%), CVaR(95%), arbitrary reserve percentile
+- Plots: loss exceedance curve (P(S >= x)), total loss distribution, events vs loss scatter, correlation heatmap
+- Input validation and reproducibility (seeded RNG)
 """
 
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass
+from typing import Tuple, Optional
+
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import lognorm, poisson, norm
-import seaborn as sns
 import pandas as pd
-from tqdm import tqdm
+import seaborn as sns
+import matplotlib.pyplot as plt
+from numpy.random import default_rng, Generator
+from scipy.stats import norm
+
+sns.set(style="whitegrid")
+
+
+@dataclass
+class RiskModelConfig:
+    simulations: int = 100_000
+    lower: float = 1_000.0
+    upper: float = 2_000.0
+    confidence_level: float = 0.80
+    events: float = 4.0           # Poisson rate λ (expected events per year)
+    reserve: float = 0.75         # Reserve percentile (e.g., 0.75 = 75th)
+    seed: Optional[int] = 123     # None for non-deterministic
+
 
 class RiskModel:
-    def __init__(self, simulations, lower, upper, confidence_level, events, reserve):
-        self.simulations = simulations
-        self.lower = lower
-        self.upper = upper
-        self.confidence_level = confidence_level
-        self.events = events
-        self.reserve = reserve
-        np.random.seed(123)
-        
-        self.calculate_parameters()
-        self.generate_distributions()
-        self.combine_distributions()
-        self.calculate_metrics()
+    """
+    Compound Poisson–Lognormal Monte Carlo model.
 
-    def calculate_parameters(self):
-        error = (1 - self.confidence_level) / 2
-        self.lowerq = lognorm.ppf(error, s=np.log(self.upper / self.lower))
-        self.upperq = lognorm.ppf(1 - error, s=np.log(self.upper / self.lower))
-        self.true_mean_log = (np.log(self.lower) + np.log(self.upper)) / 2
-        self.true_sd_log = (np.log(self.upper) - np.log(self.lower)) / (2 * norm.ppf(0.9))
+    Construct via:
+      model = RiskModel.from_interval(config)
 
-    def generate_distributions(self):
-        self.loss = lognorm.rvs(s=self.true_sd_log, scale=np.exp(self.true_mean_log), size=self.simulations)
-        self.prob = poisson.rvs(self.events, size=self.simulations)
+    Then:
+      model.summary()
+      model.plot_loss_exceedance_curve()
+      model.plot_loss_distribution()
+      model.plot_scatter()
+      model.plot_heatmap()
+    """
 
-    def combine_distributions(self):
-        self.combined_distribution = [np.convolve(self.prob[i], self.loss[i], mode='full') for i in tqdm(range(self.simulations), desc="Combining distributions")]
-        self.total_loss = np.array([np.sum(self.combined_distribution[i]) for i in range(self.simulations)])
+    def __init__(
+        self,
+        simulations: int,
+        mu: float,
+        sigma: float,
+        events: float,
+        reserve: float,
+        seed: Optional[int] = 123,
+    ) -> None:
+        self.simulations = int(simulations)
+        self.mu = float(mu)
+        self.sigma = float(sigma)
+        self.events = float(events)
+        self.reserve = float(reserve)
+        self.rng: Generator = default_rng(seed)
 
-    def calculate_metrics(self):
-        self.mean_loss = np.mean(self.total_loss)
-        self.median_loss = np.median(self.total_loss)
-        self.std_loss = np.std(self.total_loss)
-        self.var = np.percentile(self.total_loss, 95)
-        self.cvar = np.mean(self.total_loss[self.total_loss > self.var])
-        self.loss_at_reserve = np.percentile(self.total_loss, self.reserve * 100)
-        self.percentiles = {p: np.percentile(self.total_loss, p) for p in [10, 20, 30, 40, 50, 60, 70, 80, 90, 99]}
+        self._validate_core_inputs()
+        self._simulate()
+        self._metrics()
 
-    def plot_loss_exceedance_curve(self):
-        number_sequence = np.arange(0.01, 1.001, 0.001)
-        y = [np.percentile(self.total_loss, i * 100) for i in number_sequence]
-        plt.figure(figsize=(10, 6))
-        plt.plot(number_sequence, y, marker='o')
-        plt.xlabel('Percentile')
-        plt.ylabel('Loss')
-        plt.title('Loss Exceedance Curve')
-        plt.grid(True)
-        plt.show()
+    @classmethod
+    def from_interval(cls, cfg: RiskModelConfig) -> "RiskModel":
+        """
+        Calibrate lognormal (μ, σ) so that P(lower <= severity <= upper) ≈ confidence_level,
+        then construct the model.
+        """
+        _validate_interval_inputs(cfg.lower, cfg.upper, cfg.confidence_level, cfg.events, cfg.reserve, cfg.simulations)
+        mu, sigma = calibrate_lognormal_from_interval(cfg.lower, cfg.upper, cfg.confidence_level)
+        return cls(
+            simulations=cfg.simulations,
+            mu=mu,
+            sigma=sigma,
+            events=cfg.events,
+            reserve=cfg.reserve,
+            seed=cfg.seed,
+        )
 
+    # ---------- Simulation and metrics ----------
 
-    def plot_loss_distribution(self):
-        plt.figure(figsize=(10, 6))
-        sns.histplot(self.total_loss, kde=True)
-        plt.axvline(self.mean_loss, color='r', linestyle='--', label=f'Mean: {self.mean_loss:.2f}')
-        plt.axvline(self.var, color='g', linestyle='--', label=f'VaR (95%): {self.var:.2f}')
-        plt.axvline(self.cvar, color='y', linestyle='--', label=f'CVaR (95%): {self.cvar:.2f}')
-        plt.title('Total Loss Distribution')
-        plt.xlabel('Loss')
-        plt.ylabel('Density')
-        plt.legend()
-        plt.grid(True)
-        plt.show()
+    def _validate_core_inputs(self) -> None:
+        if self.sigma <= 0:
+            raise ValueError("Lognormal sigma must be > 0.")
+        if self.events < 0:
+            raise ValueError("Poisson rate (events) must be >= 0.")
+        if not (0.0 < self.reserve < 1.0):
+            raise ValueError("Reserve percentile must be in (0, 1).")
+        if self.simulations < 1_000:
+            print("Warning: fewer than 1,000 simulations may be unstable for tail estimates.")
 
-    def plot_heatmap(self):
-        corr_matrix = np.corrcoef([self.loss, self.prob, self.total_loss])
-        plt.figure(figsize=(8, 6))
-        sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', 
-                    xticklabels=['Loss', 'Probability', 'Total Loss'],
-                    yticklabels=['Loss', 'Probability', 'Total Loss'])
-        plt.title('Correlation Heatmap')
-        plt.show()
+    def _simulate(self) -> None:
+        """
+        Vectorized compound simulation:
+        1) Draw frequencies: N_i ~ Poisson(events)
+        2) Draw severities across all events: lognormal(μ, σ)
+        3) Sum severities per simulation using segment sums
+        """
+        self.N = self.rng.poisson(lam=self.events, size=self.simulations)
 
-    def plot_scatter(self):
-        plt.figure(figsize=(10, 6))
-        plt.scatter(self.prob, self.total_loss, alpha=0.5)
-        plt.xlabel('Number of Events')
-        plt.ylabel('Total Loss')
-        plt.title('Scatter Plot: Number of Events vs Total Loss')
-        plt.grid(True)
-        plt.show()
+        totals = np.zeros(self.simulations, dtype=float)
+        mask = self.N > 0
+        counts = self.N[mask]
 
-    def summary(self):
-        print(f"Mean Loss: {self.mean_loss:.2f}")
-        print(f"Median Loss: {self.median_loss:.2f}")
-        print(f"Standard Deviation of Loss: {self.std_loss:.2f}")
-        print(f"Value at Risk (95%): {self.var:.2f}")
-        print(f"Conditional Value at Risk (95%): {self.cvar:.2f}")
-        print(f"{self.reserve * 100}th Percentile Loss: {self.loss_at_reserve:.2f}")
+        if counts.size > 0:
+            total_events = int(counts.sum())
+            severities = self.rng.lognormal(mean=self.mu, sigma=self.sigma, size=total_events)
+            starts = np.cumsum(np.concatenate(([0], counts[:-1])))
+            totals_masked = np.add.reduceat(severities, starts)
+            totals[mask] = totals_masked
+
+        self.total_loss = totals
+        with np.errstate(divide="ignore", invalid="ignore"):
+            avg_severity = np.where(self.N > 0, self.total_loss / self.N, np.nan)
+        self.diag = pd.DataFrame({"events": self.N, "total_loss": self.total_loss, "avg_severity": avg_severity})
+
+    def _metrics(self) -> None:
+        self.mean_loss = float(np.mean(self.total_loss))
+        self.median_loss = float(np.median(self.total_loss))
+        self.std_loss = float(np.std(self.total_loss))
+        self.var_95 = float(np.percentile(self.total_loss, 95))
+        tail = self.total_loss[self.total_loss > self.var_95]
+        self.cvar_95 = float(tail.mean()) if tail.size > 0 else self.var_95
+        self.loss_at_reserve = float(np.percentile(self.total_loss, self.reserve * 100))
+
+        pts = [10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 99]
+        self.percentiles = pd.DataFrame({"Percentile": pts, "Loss": [float(np.percentile(self.total_loss, p)) for p in pts]})
+        self.corr = self.diag[["events", "avg_severity", "total_loss"]].corr()
+
+    # ---------- Outputs ----------
+
+    def summary(self) -> None:
+        print("=== Summary ===")
+        print(f"Simulations: {self.simulations:,}")
+        print(f"Severity Lognormal: mu={self.mu:.4f}, sigma={self.sigma:.4f}")
+        print(f"Frequency Poisson rate (events/year): {self.events:.4f}")
+        print(f"Mean Loss: {self.mean_loss:,.2f}")
+        print(f"Median Loss: {self.median_loss:,.2f}")
+        print(f"Std Dev: {self.std_loss:,.2f}")
+        print(f"VaR (95%): {self.var_95:,.2f}")
+        print(f"CVaR (95%): {self.cvar_95:,.2f}")
+        print(f"Reserve ({self.reserve:.0%}): {self.loss_at_reserve:,.2f}")
         print("\nPercentiles:")
-        for p, value in self.percentiles.items():
-            print(f"P({p}): {value:.2f}")
+        print(self.percentiles.to_string(index=False))
+        print("\nCorrelations:")
+        print(self.corr.round(3).to_string())
 
-# Usage
-model = RiskModel(
-    simulations=100000,
-    lower=1000,
-    upper=2000,
-    confidence_level=0.8,
-    events=4,
-    reserve=0.75
-)
-model.summary()
-model.plot_loss_exceedance_curve()
-model.plot_loss_distribution()
-model.plot_heatmap()
-model.plot_scatter()
+    def loss_exceedance(self) -> Tuple[np.ndarray, np.ndarray]:
+        """Return (losses_sorted, exceedance_probability) for plotting or export."""
+        s = np.sort(self.total_loss)
+        n = s.size
+        exceed = 1.0 - (np.arange(1, n + 1) / n)
+        return s, exceed
+
+    def plot_loss_exceedance_curve(self) -> None:
+        s, exceed = self.loss_exceedance()
+        plt.figure(figsize=(10, 6))
+        plt.step(s, exceed, where="post")
+        plt.xlabel("Annual Loss")
+        plt.ylabel("Exceedance Probability  P(S ≥ x)")
+        plt.title("Loss Exceedance Curve")
+        plt.yscale("log")
+        plt.grid(True, which="both", ls="--", alpha=0.4)
+        plt.show()
+
+    def plot_loss_distribution(self, bins: int = 60) -> None:
+        plt.figure(figsize=(10, 6))
+        sns.histplot(self.total_loss, kde=True, bins=bins, color="#4C72B0")
+        plt.axvline(self.mean_loss, color="r", linestyle="--", label=f"Mean: {self.mean_loss:,.0f}")
+        plt.axvline(self.var_95, color="g", linestyle="--", label=f"VaR 95%: {self.var_95:,.0f}")
+        plt.axvline(self.cvar_95, color="y", linestyle="--", label=f"CVaR 95%: {self.cvar_95:,.0f}")
+        plt.title("Total Loss Distribution")
+        plt.xlabel("Annual Loss")
+        plt.ylabel("Density")
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        plt.show()
+
+    def plot_scatter(self) -> None:
+        plt.figure(figsize=(10, 6))
+        plt.scatter(self.diag["events"], self.diag["total_loss"], alpha=0.35, s=12)
+        plt.xlabel("Number of Events")
+        plt.ylabel("Total Annual Loss")
+        plt.title("Events vs Total Loss")
+        plt.grid(True, alpha=0.3)
+        plt.show()
+
+    def plot_heatmap(self) -> None:
+        plt.figure(figsize=(7, 5))
+        sns.heatmap(self.corr, annot=True, cmap="coolwarm", vmin=-1, vmax=1)
+        plt.title("Correlation Heatmap")
+        plt.show()
+
+
+# ---------- Utilities ----------
+
+def calibrate_lognormal_from_interval(lower: float, upper: float, confidence_level: float) -> Tuple[float, float]:
+    """
+    Calibrate lognormal (μ, σ) so that the central interval [lower, upper]
+    corresponds to probability = confidence_level.
+
+    Returns:
+        (mu, sigma)
+    """
+    if lower <= 0 or upper <= 0:
+        raise ValueError("Lower and upper must be > 0.")
+    if upper <= lower:
+        raise ValueError("Upper must be greater than lower.")
+    if not (0.50 <= confidence_level < 1.0):
+        raise ValueError("Confidence level should be in [0.50, 1.0).")
+
+    error = (1.0 - confidence_level) / 2.0
+    z1, z2 = norm.ppf(error), norm.ppf(1.0 - error)
+    a, b = math.log(lower), math.log(upper)
+    sigma = (b - a) / (z2 - z1)
+    mu = a - sigma * z1
+    if sigma <= 0:
+        raise ValueError("Calibration produced non-positive sigma; check inputs.")
+    return mu, sigma
+
+
+def _validate_interval_inputs(lower: float, upper: float, cl: float, events: float, reserve: float, sims: int) -> None:
+    if lower <= 0 or upper <= 0:
+        raise ValueError("Lower and upper must be > 0.")
+    if upper <= lower:
+        raise ValueError("Upper must be greater than lower.")
+    if not (0.50 <= cl < 1.0):
+        raise ValueError("Confidence level should be in [0.50, 1.0).")
+    if events < 0:
+        raise ValueError("Poisson rate (events) must be >= 0.")
+    if not (0.0 < reserve < 1.0):
+        raise ValueError("Reserve percentile must be in (0, 1).")
+    if sims < 1_000:
+        print("Warning: fewer than 1,000 simulations may be unstable for tail estimates.")
+
+
+# ---------- Interactive prompts (CLI/Colab friendly) ----------
+
+def _parse_float(prompt: str, default: float, min_val: Optional[float] = None, max_val: Optional[float] = None) -> float:
+    while True:
+        raw = input(f"{prompt} [default {default}]: ").strip()
+        if raw == "":
+            return float(default)
+        raw_clean = raw.replace(",", "").replace("_", "")
+        try:
+            val = float(raw_clean)
+        except ValueError:
+            print("Invalid number. Please try again.")
+            continue
+        if min_val is not None and val < min_val:
+            print(f"Value must be ≥ {min_val}. Please try again.")
+            continue
+        if max_val is not None and val > max_val:
+            print(f"Value must be ≤ {max_val}. Please try again.")
+            continue
+        return val
+
+
+def _parse_int(prompt: str, default: int, min_val: Optional[int] = None, max_val: Optional[int] = None) -> int:
+    while True:
+        val = _parse_float(prompt, float(default),
+                           float(min_val) if min_val is not None else None,
+                           float(max_val) if max_val is not None else None)
+        try:
+            return int(val)
+        except ValueError:
+            print("Invalid integer. Please try again.")
+
+
+if __name__ == "__main__":
+    print("Enter parameters (press Enter for defaults).")
+    simulations = _parse_int("Number of simulations", 100_000, min_val=1_000)
+    lower = _parse_float("Lower bound of severity interval (minimum expected loss per event)", 1_000, min_val=1e-9)
+    upper = _parse_float("Upper bound of severity interval (maximum expected loss per event)", 2_000, min_val=1e-9)
+    if upper <= lower:
+        print("Note: upper was not greater than lower. Swapping values for you.")
+        lower, upper = upper, lower
+    confidence_level = _parse_float("Confidence level for severity interval (0.50..0.99)", 0.80, min_val=0.50, max_val=0.99)
+    events = _parse_float("Expected number of events per year (Poisson rate)", 4.0, min_val=0.0)
+    reserve = _parse_float("Reserve percentile (0.01..0.99)", 0.75, min_val=0.01, max_val=0.99)
+    seed = _parse_int("Random seed", 123)
+
+    cfg = RiskModelConfig(
+        simulations=simulations,
+        lower=lower,
+        upper=upper,
+        confidence_level=confidence_level,
+        events=events,
+        reserve=reserve,
+        seed=seed
+    )
+
+    model = RiskModel.from_interval(cfg)
+    print("\nParameters accepted. Running simulation...\n")
+    model.summary()
+    model.plot_loss_exceedance_curve()
+    model.plot_loss_distribution()
+    model.plot_scatter()
+    model.plot_heatmap()
