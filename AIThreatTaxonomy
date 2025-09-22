@@ -1,0 +1,223 @@
+# AI System Threat Vector Taxonomy
+
+## 1. Introduction
+
+This repository provides a taxonomy of AI threat vectors to guide AI risk assessments and align with established security and governance frameworks. Each threat domain includes a short technical definition, prevalence context, practical tips for assessment, and a structured set of sub‑threats with scenario descriptions. It establishes a standardized taxonomy for identifying, assessing, and mitigating threat vectors specific to AI and Machine Learning (ML) systems. Its purpose is to provide a common lexicon for security analysts, MLOps engineers, data scientists, and risk managers to ensure a consistent approach to AI risk management.
+
+This taxonomy is intended for integration into:
+
+- NIST AI RMF “Map → Measure → Manage” alignment (AI RMF 1.0)
+- ISO/IEC 23894 AI risk assessment guidance
+- FAIR risk modeling 
+- ISO/IEC 27005 risk assessment workflows
+- OWASP Top 10 for LLM Applications
+- ENISA Threat Landscape for Machine Learning
+- Audit evidence for ISO/IEC 42001 compliance
+
+This document categorizes AI-specific threat vectors into 9 critical domains, aligning with industry standards. Each domain includes:
+- Formal Definition
+- Sub-Threats (Descending order of prevalence)
+- Risk Scenario Examples 
+- Prevalence Guidance (When to focus most)
+- Practical Tips for risk assessors
+
+
+This taxonomy is designed to be a living document, evolving with the threat landscape. All contributions must adhere to the guidelines outlined at the end of this file.
+
+### 1.1 How to Use This Documentation
+
+- Integrate the taxonomy into AI risk registers, threat modeling exercises, and control mappings.
+- Reference it in AI system architectural reviews, model cards, and compliance reporting.
+- Use for risk quantification and SLA, warranty, or cyber insurance design.
+ This repository is version-controlled for auditable governance records.
+
+
+## 2. Threat Vector Taxonomy
+
+The following table details the primary domains of AI threats. Each domain includes a definition, guidance for risk assessment, and a prioritized list of common sub-threats with representative scenarios.
+
+| Domain                 | Definition, Prevalence, and Assessment Guidance                                                                                                                                                                                                                                                                                                                                                                  |
+| -----------------------| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Misuse Domain       | Definition: Using AI systems for unintended, unethical, or malicious purposes by insiders or external actors.Prevalence: Highest in publicly exposed, generative, or open-ended systems (e.g., LLMs, image generators). Highly prevalent where access control and monitoring are weak. Assessment Tip: Focus on robust input validation, output monitoring, rate limiting, and defining strict acceptable use policies. Define usage monitoring controls and enforce acceptable use policies.                                           |
+| 2. Poisoning Domain    | Definition: Injecting malicious data or components into training sets or models to corrupt behavior or logic. Prevalence: During the data collection and model training phases of the MLOps lifecycle.Prevalent in environments using open datasets or third‑party models. Assessment Tip: Prioritize data source verification, data pipeline integrity checks, and anomaly detection in training metrics. Monitor provenance and integrity of all training inputs.                                                        |
+| 3. Privacy Domain      | Definition: Extracting or inferring sensitive information from trained models or user inputs. Prevalence: In models trained on Personally Identifiable Information (PII), health data, or other regulated information. Prevalent where personal or proprietary data is embedded in models. Assessment Tip: Assess the necessity of sensitive data; apply privacy-preserving techniques like differential privacy and federated learning. Apply differential privacy and query auditing.                         |
+| 4. Adversarial Domain  | Definition: Designing harmful inputs to mislead or confuse AI models and attacks at run-time. Prevalence: At the inference endpoint of deployed models, particularly in security-critical applications (e.g., computer vision, fraud detection). Prevalent in mission‑critical or safety‑sensitive applications. Assessment Tip: Evaluate model robustness using adversarial testing frameworks and implement input sanitization. Test robustness with red‑teaming and adversarial training.                                      |
+| 5. Biases Domain       | Definition: Models producing discriminatory, unfair, or biased outputs due to flawed data or design. Prevalence: In systems making decisions about people (e.g., hiring, lending, justice), often rooted in historical data imbalances.Assessment Tip: Conduct fairness audits across demographic groups and establish metrics to quantify and mitigate representational harm. Establish fairness audits and representativeness checks.             |
+| 6. Unreliable Outputs Domain | Definition: AI outputs are illogical, hallucinated, or non-factual without any external manipulation. Prevalence: Endemic to generative models, especially Large Language Models (LLMs) and diffusion models.Assessment Tip: Implement fact-checking mechanisms, cite sources, and clearly communicate the probabilistic nature of outputs to users. Validate outputs against verified knowledge bases                               |
+| 7. Drift Domain        | Definition: Model accuracy or behavior deteriorates as real-world data evolves over time.Prevalence: In any long-running production system where the operating environment is non-static.Assessment Tip: Establish automated monitoring of data distributions and model performance metrics to trigger alerts and retraining. Deploy drift detection and retraining pipelines.                                          |
+| 8. Supply Chain Domain | Definition: Attacks via third-party components, pre-trained models, or data sources.Prevalence: High in projects leveraging open-source models, libraries, and external data APIs.Assessment Tip: Maintain a Bill of Materials (BOM) for AI components and vet third-party assets for known vulnerabilities.                                                                 |
+| 9. IP Threat Domain    | Definition: Extracting sensitive information, intellectual property, or training data from deployed models.Prevalence: In proprietary models that represent a significant competitive advantage or R&D investment.Assessment Tip: Secure model endpoints with strong access controls, obfuscation, and monitor query patterns for extraction behavior. ecure APIs, watermark models, and enforce throttling.                               |
+
+---
+
+### Sub-Threat Scenarios by Domain
+
+#### 1. Misuse Domain
+
+| Sub-Threat          | Scenario Description                                                          |
+| ------------------- | ----------------------------------------------------------------------------- |
+| Prompt Injection    | Hidden instructions bypass safeguards to execute unintended, malicious actions|
+| LLM Jailbreaking    | User manipulates prompts to elicit prohibited content or reveal system rules. |
+| Deepfake Generation | System is used to create convincing, fabricated audio or visual content.      |
+| Disinformation Ops  | Model is leveraged to generate false narratives or propaganda at scale.       |
+| Bot Abuse           | Automated agents exploit the AI to perform spamming, scraping, or fraud.      |
+| Shadow AI Usage     | Employees use unvetted public AI tools, exposing corporate data.              |
+
+#### 2. Poisoning Domain
+
+| Sub-Threat                 | Scenario Description                                                             |
+| -------------------------- | -------------------------------------------------------------------------------- |
+| Targeted Data Poisoning    | Malicious examples are inserted to create a specific, targeted model failure.    |
+| Model Backdooring          | A hidden trigger in model input causes a specific, malicious output.             |
+| Tainted Open-Source Models | A pre-trained model from a public hub contains a pre-embedded vulnerability.      |
+| Logic Corruption           | Training data is manipulated to teach the model an incorrect, harmful rule.      |
+| Poisoned ML Libraries      | A compromised dependency in the MLOps toolchain injects malicious code.          |
+
+#### 3. Privacy Domain
+
+| Sub-Threat              | Scenario Description                                                                    |
+| ----------------------- | --------------------------------------------------------------------------------------- |
+| Model Inversion         | Reconstructing sensitive training data samples (e.g., faces) from model outputs.        |
+| Membership Inference    | Determining if a specific individual's data was used in the model's training set.       |
+| PII Leakage from LLMs   | Model inadvertently reveals sensitive PII it memorized during its training.             |
+| Sensitive Data Leakage  | User queries inadvertently cause the model to leak confidential business information.   |
+| Inference Eavesdropping | An attacker observes model inputs/outputs to infer sensitive user information.          |
+
+#### 4. Adversarial Domain
+
+| Sub-Threat                      | Scenario Description                                                          |
+| ------------------------------- | ----------------------------------------------------------------------------- |
+| Evasion Attacks                 | A malicious input is slightly altered to be misclassified by the model.       |
+| Adversarial Patch/Image         | A visible pattern is applied to an object to fool a computer vision system.   |
+| Model Denial of Service (DoS)   | Crafting inputs that cause extreme computational load, freezing the model.     |
+| Adversarial Reprogramming       | Crafting inputs that repurpose the model to perform an unintended task.       |
+| Oracle and Extraction Attacks   | Querying a model repeatedly to steal its parameters or recreate its logic.    |
+
+#### 5. Biases Domain
+
+| Sub-Threat             | Scenario Description                                                        |
+| ---------------------- | --------------------------------------------------------------------------- |
+| Representational Harm  | Model reinforces negative stereotypes against a protected demographic group.  |
+| Allocational Harm      | Model unfairly denies opportunities or resources (e.g., loans, jobs).       |
+| Data Imbalance Bias    | Skewed training data causes poor performance for underrepresented groups.   |
+| Proxy Discrimination   | Model uses a non-sensitive feature (e.g., zip code) as a proxy for race.    |
+| Algorithmic Amplification| Model magnifies and reinforces existing societal biases present in data.    |
+
+#### 6. Unreliable Outputs Domain
+
+| Sub-Threat              | Scenario Description                                                               |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| Factual Hallucination   | Model generates plausible but entirely incorrect information with high confidence. |
+| Source Fabrication      | Model invents non-existent citations, URLs, or references to support its claims.   |
+| Logical Inconsistency   | Model output contains contradictory statements or violates basic reasoning.        |
+| Incorrect Summarization | Key context is lost or misrepresented when summarizing complex documents.          |
+| Unsafe Content Gen.     | Model generates harmful, toxic, or insecure code without malicious input.        |
+
+#### 7. Drift Domain
+
+| Sub-Threat             | Scenario Description                                                                  |
+| ---------------------- | ------------------------------------------------------------------------------------- |
+| Concept Drift          | The relationship between inputs and outputs changes (e.g., fraud patterns evolve).    |
+| Data Distribution Drift| The statistical properties of input data change from training to production.        |
+| Upstream Data Changes  | Changes in a data pipeline (e.g., a changed API) silently corrupt model inputs.     |
+| User Behavior Change   | Users begin interacting with the system in a new way not seen during training.      |
+| Feedback Loop Drift    | Model's own outputs influence future inputs, creating a self-reinforcing bias.      |
+
+#### 8. Supply Chain Domain
+
+| Sub-Threat                    | Scenario Description                                                         |
+| ----------------------------- | ---------------------------------------------------------------------------- |
+| Compromised Pre-trained Model | A downloaded foundation model contains a hidden backdoor or data leak vulnerability. |
+| Vulnerable ML Framework       | Exploiting a known CVE in a core library like TensorFlow or PyTorch.         |
+| Insecure Data Feeds/APIs      | An external data source is compromised, feeding malicious data to the system. |
+| Container Image Poisoning     | The container hosting the model is built from a base image with malware.     |
+| Compromised Annotation Tools  | Malicious actors compromise a data labeling platform to poison datasets.     |
+
+#### 9. IP Threat Domain
+
+| Sub-Threat              | Scenario Description                                                              |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| Model Extraction/Theft  | An attacker queries the model to create a functionally equivalent clone.          |
+| Data Exfiltration       | Exploiting model vulnerabilities to extract large volumes of training data.       |
+| Proprietary Logic Theft | Reconstructing unique business rules or algorithms embedded within the model.     |
+| Hyperparameter Stealing | Using side-channel or timing attacks to infer optimal model configurations.       |
+| Watermark Removal       | Adversarially removing an embedded watermark designed to prove model ownership.   |
+
+---
+
+## 3. Contribution and Publication Guidelines
+
+All modifications or additions to this taxonomy must adhere to the following rules to maintain consistency and quality.
+
+*   Scope Adherence: All proposed changes must align with the existing nine threat domains. Proposals for new domains require a formal review by the AI Risk Committee.
+*   Structured Submissions: All changes must be submitted via a Pull Request (PR) against the `main` branch of this repository.
+*   Evidence-Based Additions: New sub-threats should be justified with references to published research, established security frameworks (e.g., MITRE ATLAS), or documented real-world incidents.
+*   Concise and Technical Language: Scenario descriptions must not exceed 20 words and must maintain a technical, unambiguous tone.
+*   Peer Review: All PRs require at least two approvals from designated reviewers before being merged.
+
+## 4. Threat Domain to Loss Category Mapping
+
+```mermaid graph LR
+    %% Style groups
+    classDef loss fill=#f8f9fa,stroke=#333,stroke-width=1px;
+    classDef domain fill=#ddeeff,stroke=#333,stroke-width=1px;
+    
+    %% Loss Categories
+    C[Confidentiality]:::loss
+    I[Integrity]:::loss
+    A[Availability]:::loss
+    L[Compliance]:::loss
+    R[Reputation]:::loss
+
+    %% Threat Domains
+    M[Misuse Domain]:::domain
+    P[Poisoning Domain]:::domain
+    PR[Privacy Domain]:::domain
+    ADV[Adversarial Domain]:::domain
+    B[Biases Domain]:::domain
+    UO[Unreliable Outputs Domain]:::domain
+    D[Drift Domain]:::domain
+    SC[Supply Chain Domain]:::domain
+    IP[IP Threat Domain]:::domain
+
+    %% Connections
+    M --> I
+    M --> A
+    M --> R
+    M --> L
+
+    P --> I
+    P --> R
+
+    PR --> C
+    PR --> L
+    PR --> R
+
+    ADV --> I
+    ADV --> A
+    ADV --> R
+
+    B --> I
+    B --> L
+    B --> R
+
+    UO --> R
+    UO --> L
+
+    D --> I
+    D --> A
+    D --> R
+
+    SC --> C
+    SC --> I
+    SC --> A
+    SC --> L
+    SC --> R
+
+    IP --> C
+    IP --> I
+    IP --> R
+
+## 5. License
+
+This documentation is published by Prof. Hernan Huwyler, MBA CPA, under the Creative Commons Attribution 4.0 License, unless otherwise noted. Use for commercial, cybersecurity, or compliance activities is permitted with attribution.
