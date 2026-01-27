@@ -8,6 +8,7 @@ class RiskModel:
     """
     A Monte Carlo simulation-based risk model to estimate potential losses in a project or business scenario.
     The model uses lognormal distributions for loss amounts and Poisson distributions for event frequency.
+    Created by Prof. Hernan Huwyler, MBA CPA AI GRC Director IE University Executive Education
 
     Attributes:
         simulations (int): Number of Monte Carlo simulations.
@@ -49,8 +50,9 @@ class RiskModel:
         np.random.seed(123)
 
         # Calculate lognormal distribution parameters
-        self.true_mean_log = np.log((self.lower * self.upper) ** 0.5)
-        self.true_sd_log = np.sqrt(np.log(self.upper / self.lower)) / (2 * norm.ppf(self.confidence_level))
+        z = norm.ppf(confidence_level)
+        self.true_sd_log = np.log(upper / lower) / (2 * z)
+        self.true_mean_log = np.log(lower) + z * self.true_sd_log
 
         # Run Monte Carlo simulations
         self.total_loss = []
@@ -96,10 +98,10 @@ def plot_histogram(data, title, xlabel, ylabel, color, bins=50):
 if __name__ == "__main__":
     # Initialize and run the risk model
     model = RiskModel(
-        lower=30000,
-        upper=50000,
-        events=3,
-        confidence_level=0.9,
+        lower=1000,
+        upper=2000,
+        events=4,
+        confidence_level=0.8,
         simulations=10000,
         reserve=0.75
     )
